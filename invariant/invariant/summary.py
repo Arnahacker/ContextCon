@@ -171,7 +171,7 @@ def price_story(case: dict) -> list[str]:
     out = []
     for s in case["decision"]["steps"]:
         m = s["multiplier"]
-        if s["rule"].startswith(("FIRE_BASE", "WC_BASE")):
+        if "_BASE_" in s["rule"]:
             out.append(f"Base rate for this occupancy: {s.get('explain','')}")
         elif m > 1:
             out.append(f"+{round((m - 1) * 100)}% — {s.get('explain', s['rule'])}")

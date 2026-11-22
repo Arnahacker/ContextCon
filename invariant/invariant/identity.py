@@ -127,8 +127,19 @@ def exact_name_match(cands: list[dict], asked: str | None, top: dict) -> dict | 
 
 
 def resolve(form, crust: Crustdata) -> Identity:
+    # ---- rung 0a: a website is exact, names are not. Try it first.
+    dom = getattr(form, "domain", None)
+    if dom:
+        cands = _rank(crust.identify(domains=[dom]))
+        hit = [c for c in cands if (c.get("domain") or "").lower().removeprefix("www.") == dom]
+        if hit:
+            pick = _richest(hit)
+            return Identity(rung=0, company={**pick, "tie_break": f"matched on the website {dom}"},
+                            candidates=cands[:5])
+        # no exact domain match: fall through to the name, never to a guess
+
     # ---- rung 0
-    if form.company_name or getattr(form, "domain", None):
+    if form.company_name:
         try:
             cands = _rank(crust.identify(names=[form.company_name]))
         except EvidenceUnavailable:
@@ -141,6 +152,21 @@ def resolve(form, crust: Crustdata) -> Identity:
             tied = [c for c in cands if top.get("score", 0) - c.get("score", 0) < CLOSE]
             if top.get("score", 0) >= STRONG:
                 if len(tied) == 1:
+                    # same company, several profiles: live "Gokaldas Exports Ltd."
+                    # scored 1.00 with 113 staff and no website, while the
+                    # profile with gokaldasexports.com and 1991 staff scored 0.60.
+                    # Same canonical name = same company; use the richest profile.
+                    key = canonical_name(top.get("name"))
+                    dupes = [c for c in cands if c is not top and key
+                             and canonical_name(c.get("name")) == key
+                             and c.get("score", 0) >= EXACT_FLOOR]
+                    if dupes:
+                        pick = _richest([top] + dupes)
+                        if pick is not top:
+                            pick = {**pick, "tie_break": f"{len(dupes) + 1} profiles of the "
+                                                         f"same company; used the one with "
+                                                         f"the most data"}
+                        return Identity(rung=0, company=pick, candidates=cands[:5])
                     return Identity(rung=0, company=top, candidates=cands[:5])
                 pick = break_tie(tied, form.company_name)
                 if pick is not None:

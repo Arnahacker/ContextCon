@@ -176,6 +176,11 @@ def run(prompt: str, run_id: Optional[str] = None,
                                          url=url, dated=dated,
                                          quote=", ".join(f"{k}: {v}" for k, v in roles.items()))))
 
+            # --- the GSTIN, if given: what the number proves about itself
+            loc = cd.get("locations") or {}
+            facts += build.gstin_facts(form.gstin, form.company_name or adapt.name(cd),
+                                       loc.get("state") or adapt.hq(cd))
+
             # --- headcount, one-directional
             facts += build.headcount_facts(
                 form.declared_headcount, adapt.headcount_total(cd),
@@ -273,6 +278,8 @@ def run(prompt: str, run_id: Optional[str] = None,
                                          complete=adapt.web_ok(web))
             budget.check(ledger.credits)
 
+        elif form.gstin and not ident.candidates:
+            facts += build.gstin_facts(form.gstin, form.company_name)
         elif ident.candidates:
             # rung 2: cannot check this company, so check the class it is in
             facts += build.cohort_facts(ident.candidates, form.declared_headcount,

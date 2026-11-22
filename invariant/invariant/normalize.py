@@ -49,6 +49,29 @@ OCCUPANCY = [
 ]
 
 
+def cover_key(text: str) -> str:
+    """Any way of naming a line of cover -> the key in rules.yaml covers."""
+    t = (text or "").strip().lower()
+    if any(w in t for w in ("workmen", "wc", "employee comp", "employees comp",
+                            "employees' comp", "ec policy")):
+        return "wc"
+    if any(w in t for w in ("burglary", "theft", "housebreaking")):
+        return "burglary"
+    if any(w in t for w in ("marine", "cargo", "transit", "shipment")):
+        return "marine_cargo"
+    return "fire"
+
+
+def clean_domain(d: Optional[str]) -> Optional[str]:
+    """'https://www.Rajda.in/about' -> 'rajda.in'."""
+    if not d:
+        return None
+    d = str(d).strip().lower()
+    d = re.sub(r"^[a-z]+://", "", d).split("/")[0].split("?")[0]
+    d = re.sub(r"^www\.", "", d).strip(".")
+    return d if re.fullmatch(r"[a-z0-9-]+(\.[a-z0-9-]+)+", d) else None
+
+
 def words_to_int(text: str) -> Optional[int]:
     """'one hundred twenty' -> 120. Returns None if it is not a number in words."""
     toks = re.findall(r"[a-z]+", text.lower())
@@ -97,12 +120,73 @@ def count_to_int(text) -> Optional[int]:
     return words_to_int(s)
 
 
+def _occ_rank(key: str) -> int:
+    for i, (_, k) in enumerate(OCCUPANCY):
+        if k == key:
+            return i
+    return len(OCCUPANCY)
+
+
 def to_occupancy(industry: Optional[str], activities: list[str] | None = None) -> str:
-    blob = " ".join([industry or ""] + list(activities or [])).lower()
-    for needles, key in OCCUPANCY:
-        if any(n in blob for n in needles):
-            return key
-    return "unknown"
+    """The most hazardous occupancy among the things declared, each matched ON
+    ITS OWN. Joining them into one string made "leather" + "manufacturing"
+    read as "leather manufact" (a tannery) - wording, not the business."""
+    best = "unknown"
+    for text in [industry or ""] + list(activities or []):
+        t = (text or "").lower()
+        for needles, key in OCCUPANCY:
+            if any(n in t for n in needles):
+                if _occ_rank(key) < _occ_rank(best):
+                    best = key
+                break
+    return best
+
+
+# canonical trade words. A model says "leather exporter", "leather goods
+# export business", "tanning unit"; the evidence query must see ONE word, or
+# the wording reaches the cohort search and the hash. First match wins, so the
+# more specific trade comes first.
+TRADES = [
+    (("tanner", "tanning", "tannery"), "tannery"),
+    (("footwear", "shoe"), "footwear"),
+    (("leather",), "leather"),
+    (("garment", "stitching", "apparel", "hosiery"), "garment stitching"),
+    (("spinning", "weaving", "yarn", "textile"), "textile"),
+    (("dyeing", "dye house"), "dyeing"),
+    (("pharma",), "pharmaceutical"),
+    (("chemical", "pigment"), "chemical"),
+    (("foundry",), "foundry"), (("forging",), "forging"),
+    (("plastic",), "plastics"), (("rubber", "tyre"), "rubber"),
+    (("furniture", "timber", "plywood"), "furniture"),
+    (("cold storage", "cold chain"), "cold storage"),
+    (("warehouse", "godown"), "warehouse"), (("logistics",), "logistics"),
+    (("dairy",), "dairy"), (("bakery",), "bakery"), (("food",), "food processing"),
+    (("printing",), "printing"), (("packaging",), "packaging"),
+    (("auto component", "auto parts"), "auto components"),
+    (("engineering", "machining", "fabrication"), "engineering"),
+    (("electronic",), "electronics"), (("hotel",), "hotel"), (("restaurant",), "restaurant"),
+    (("hospital", "clinic"), "hospital"), (("software", "it services"), "software"),
+    (("retail", "showroom"), "retail"),
+]
+
+
+def canonical_industry(text: Optional[str]) -> Optional[str]:
+    t = (text or "").strip().lower()
+    if not t:
+        return None
+    for needles, label in TRADES:
+        if any(n in t for n in needles):
+            return label
+    return t
+
+
+def canonical_activity(text: str) -> str:
+    t = (text or "").strip().lower()
+    if "export" in t:
+        return "export"
+    if "import" in t:
+        return "import"
+    return canonical_industry(t) or t
 
 
 def canonical_name(name: Optional[str]) -> Optional[str]:
@@ -123,12 +207,18 @@ def normalize(form: Form) -> Form:
     form.declared_sites = count_to_int(form.declared_sites)
     form.sum_insured_inr = money_to_int(form.sum_insured_inr) if form.sum_insured_inr else None
     form.countries = sorted({(c or "").strip().upper()[:2] for c in (form.countries or []) if c})
-    form.activities = sorted({a.strip().lower() for a in (form.activities or []) if a})
+    form.activities = sorted({canonical_activity(a) for a in (form.activities or [])
+                              if a and str(a).strip()})
     form.trade_names = sorted({t.strip() for t in (form.trade_names or []) if t})
     if form.industry:
-        form.industry = form.industry.strip().lower()
+        form.industry = canonical_industry(form.industry)
     if form.cover_type:
-        ct = form.cover_type.strip().lower()
-        form.cover_type = "wc" if ct in ("wc", "workmen", "workmens compensation",
-                                         "workmen's compensation", "employee comp") else "fire"
+        form.cover_type = cover_key(form.cover_type)
+    for fld in ("annual_wages_inr", "annual_shipments_inr"):
+        v = getattr(form, fld)
+        if v is not None and not isinstance(v, int):
+            setattr(form, fld, money_to_int(v))
+    form.domain = clean_domain(form.domain)
+    if form.gstin:
+        form.gstin = re.sub(r"[\s-]", "", str(form.gstin)).upper() or None
     return form

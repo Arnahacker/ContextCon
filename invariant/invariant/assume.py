@@ -21,6 +21,8 @@ SI_PER_HEAD = {
     "unknown": 300_000,
 }
 DEFAULT_HEADCOUNT = 50
+WAGES_PER_HEAD = 240_000          # Rs 20,000 a month. Illustrative.
+SHIPMENTS_PER_HEAD = 1_500_000    # annual shipment value per employee. Illustrative.
 
 
 def assume_for_pricing(facts: list[Fact]) -> list[Fact]:
@@ -38,7 +40,22 @@ def assume_for_pricing(facts: list[Fact]) -> list[Fact]:
                         "proxy_range", None,
                         Source(what="assumed: occupancy not established"), note="assumed"))
 
-    if not resolved(out, "sum_insured_inr"):
+    cover = value_of(out, "cover_type", "fire")
+    head = value_of(out, "headcount") or DEFAULT_HEADCOUNT
+    if cover == "wc" and not resolved(out, "annual_wages_inr"):
+        est = int(head) * WAGES_PER_HEAD
+        out.append(Fact("assumed_wages", "annual_wages_inr", est, "derived", MATCHES,
+                        "proxy_range", None,
+                        Source(what=f"assumed: {head} staff x Rs {WAGES_PER_HEAD:,}/year"),
+                        note="assumed"))
+    if cover == "marine_cargo" and not resolved(out, "annual_shipments_inr"):
+        est = int(head) * SHIPMENTS_PER_HEAD
+        out.append(Fact("assumed_ship", "annual_shipments_inr", est, "derived", MATCHES,
+                        "proxy_range", None,
+                        Source(what=f"assumed: {head} staff x Rs {SHIPMENTS_PER_HEAD:,} shipped/year"),
+                        note="assumed"))
+
+    if cover in ("fire", "burglary") and not resolved(out, "sum_insured_inr"):
         occ = value_of(out, "occupancy", "unknown")
         head = value_of(out, "headcount") or DEFAULT_HEADCOUNT
         per = SI_PER_HEAD.get(occ, SI_PER_HEAD["unknown"])

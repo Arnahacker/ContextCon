@@ -4,8 +4,9 @@ It never prices, never searches, never reasons about risk. Because its only
 output is a small typed object, a prompt injection has nowhere to land: there
 is no field called "instructions".
 
-Two backends:
-  anthropic  - the real thing. Use this for the demo and the invariance claim.
+Three backends, picked by READ_BACKEND or by which key is set:
+  gemini     - Google Gemini (GEMINI_API_KEY or GOOGLE_API_KEY). The demo reader.
+  anthropic  - Claude (ANTHROPIC_API_KEY).
   stub       - deterministic regex. For tests and for unblocking the team
                before a key exists. NEVER demo invariance on the stub: a regex
                that ignores wording proves nothing about a model that doesn't.
@@ -13,8 +14,6 @@ Two backends:
 from __future__ import annotations
 import json, os, re
 from typing import Any, Optional
-
-import httpx
 
 from .schemas import Form, FORM_JSON_SCHEMA, FORM_FIELDS
 from .normalize import normalize, count_to_int, money_to_int
@@ -31,23 +30,76 @@ Rules:
 
 
 # --------------------------------------------------------------- the real one
-def _anthropic(prompt: str, model: str, key: str, timeout=30.0) -> dict[str, Any]:
-    tool = {"name": "submit_form",
-            "description": "Record the extracted submission form.",
-            "input_schema": FORM_JSON_SCHEMA}
-    r = httpx.post("https://api.anthropic.com/v1/messages", timeout=timeout,
-                   headers={"x-api-key": key, "anthropic-version": "2023-06-01",
-                            "content-type": "application/json"},
-                   json={"model": model, "max_tokens": 1024, "temperature": 0,
-                         "system": SYSTEM, "tools": [tool],
-                         "tool_choice": {"type": "tool", "name": "submit_form"},
-                         "messages": [{"role": "user",
-                                       "content": f"<submission>\n{prompt}\n</submission>"}]})
-    r.raise_for_status()
-    for block in r.json().get("content", []):
-        if block.get("type") == "tool_use":
-            return block["input"]
-    raise RuntimeError("model did not return the form")
+DEFAULT_MODEL = "claude-opus-5-5"
+
+
+def _anthropic(prompt: str, model: str, key: str | None = None) -> dict[str, Any]:
+    """Official SDK, structured output against the form schema.
+
+    No temperature: current models reject it. Determinism comes from the
+    fixed schema plus normalize(), and the Invariance tab is how we check it.
+    Thinking cannot be turned off on this model; effort "low" keeps a short
+    extraction short. Server-side fallbacks re-run a refused request on
+    another model instead of failing the read.
+    """
+    import anthropic
+    client = anthropic.Anthropic(api_key=key) if key else anthropic.Anthropic()
+    resp = client.beta.messages.create(
+        model=model, max_tokens=4096,
+        betas=["server-side-fallback-2026-07-01"], fallbacks="default",
+        output_config={"effort": "low",
+                       "format": {"type": "json_schema", "schema": FORM_JSON_SCHEMA}},
+        system=SYSTEM,
+        messages=[{"role": "user", "content": f"<submission>\n{prompt}\n</submission>"}])
+    if resp.stop_reason == "refusal":
+        raise RuntimeError("the model declined to read this submission")
+    text = next((b.text for b in resp.content if b.type == "text"), None)
+    if not text:
+        raise RuntimeError(f"model returned no form (stop_reason={resp.stop_reason})")
+    return json.loads(text)
+
+
+# --------------------------------------------------------------------- gemini
+GEMINI_DEFAULT_MODEL = "gemini-2.5-flash"
+
+
+def gemini_key() -> Optional[str]:
+    return os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or None
+
+
+def _gemini(prompt: str, model: str, key: Optional[str] = None) -> dict[str, Any]:
+    """google-genai SDK, JSON output constrained to the form schema.
+
+    Temperature 0 and a fixed seed: Gemini still accepts both, and the
+    invariance claim wants the reader as repeatable as it can be. If the
+    model rejects the schema itself, retry once with JSON mode plus the
+    schema in the instructions - the form is checked field by field after.
+    """
+    from google import genai
+    from google.genai import types, errors
+    client = genai.Client(api_key=key or gemini_key())
+    contents = f"<submission>\n{prompt}\n</submission>"
+    base = dict(system_instruction=SYSTEM, temperature=0, seed=7,
+                response_mime_type="application/json")
+    try:
+        resp = client.models.generate_content(
+            model=model, contents=contents,
+            config=types.GenerateContentConfig(**base, response_json_schema=FORM_JSON_SCHEMA))
+    except errors.ClientError as e:
+        if "schema" not in str(e).lower():
+            raise
+        resp = client.models.generate_content(
+            model=model, contents=contents,
+            config=types.GenerateContentConfig(**{**base, "system_instruction":
+                SYSTEM + "\n\nReturn ONE JSON object with exactly these keys, null when "
+                         "not stated:\n" + json.dumps(FORM_JSON_SCHEMA["properties"])}))
+    text = resp.text
+    if not text:
+        raise RuntimeError("Gemini returned no form (blocked or empty response)")
+    out = json.loads(text)
+    if not isinstance(out, dict):
+        raise RuntimeError("Gemini returned something other than a form")
+    return out
 
 
 # ------------------------------------------------------------------- the stub
@@ -128,15 +180,38 @@ def _stub(prompt: str) -> dict[str, Any]:
     # legal suffix first: "Rajda Industries Exports Pvt Ltd" must not stop at
     # "Rajda Industries" - live identify has four tied Rajdas, and only the
     # full name picks the right one
-    m = (re.search(r"([A-Z][A-Za-z&.\- ]{2,60}?(?:Pvt\.? Ltd\.?|Private Limited|Limited|"
-                   r"Ltd\.?|LLP))(?![A-Za-z])", prompt)
-         or re.search(r"([A-Z][A-Za-z&.\- ]{2,40}?(?:Industries|Exports|Tanneries))", prompt))
+    # a run of Capitalised words ending in a legal suffix, so "Workmen cover
+    # for Gokaldas Exports Ltd" yields "Gokaldas Exports Ltd". Legal suffix
+    # first: "Rajda Industries Exports Pvt Ltd" must not stop at "Industries".
+    cap = r"(?:(?:[A-Z][A-Za-z.\-]*|&)\s+){0,6}?"
+    m = (re.search(r"\b(" + cap + r"(?:Pvt\.? Ltd\.?|Private Limited|Limited|Ltd\.?|LLP))(?![A-Za-z])", prompt)
+         or re.search(r"\b(" + cap + r"(?:Industries|Exports|Tanneries))\b", prompt))
     if m:
         out["company_name"] = m.group(1).strip()
-    if "workmen" in p or " wc " in p:
+    if "workmen" in p or " wc " in p or "employee compensation" in p:
         out["cover_type"] = "wc"
+    elif "burglary" in p or "theft" in p:
+        out["cover_type"] = "burglary"
+    elif "marine" in p or "cargo" in p or "transit" in p:
+        out["cover_type"] = "marine_cargo"
     elif "fire" in p or "property" in p:
         out["cover_type"] = "fire"
+    # a website: identify by domain, which is exact. Not an email address.
+    m = re.search(r"(?<![@\w.])((?:https?://)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*"
+                  r"\.(?:co\.in|com|in|net|org|io|biz|co))\b", p)
+    if m:
+        out["domain"] = m.group(1)
+    m = re.search(r"\b(\d{2}[A-Z]{5}\d{4}[A-Z][0-9A-Z]Z[0-9A-Z])\b", prompt.upper())
+    if m:
+        out["gstin"] = m.group(1)
+    money = r"((?:rs\.?|\u20b9)?\s*[\d.,]+\s*(?:cr|crore|lakh|lac|k)?)"
+    m = re.search(r"(?:wage bill|annual wages|wages|payroll)\s*(?:of|is|at|:)?\s*" + money, p)
+    if m:
+        out["annual_wages_inr"] = money_to_int(m.group(1))
+    m = re.search(r"(?:annual shipments|shipments|ships|exports? worth|cargo worth)\s*"
+                  r"(?:of|is|worth|at|:)?\s*" + money, p)
+    if m:
+        out["annual_shipments_inr"] = money_to_int(m.group(1))
     out["ask"] = "check the declaration against public data"
     return out
 
@@ -145,11 +220,17 @@ def _stub(prompt: str) -> dict[str, Any]:
 def extract(prompt: str, backend: Optional[str] = None,
             model: Optional[str] = None) -> Form:
     backend = backend or os.environ.get("READ_BACKEND") or (
+        "gemini" if gemini_key() else
         "anthropic" if os.environ.get("ANTHROPIC_API_KEY") else "stub")
-    if backend == "anthropic":
-        raw = _anthropic(prompt,
-                         model or os.environ.get("READ_MODEL", "claude-sonnet-4-5"),
-                         os.environ["ANTHROPIC_API_KEY"])
+    # READ_MODEL only applies to the backend it names, so a leftover
+    # "claude-..." line never gets sent to Gemini, or the reverse
+    wanted = model or os.environ.get("READ_MODEL") or ""
+    if backend == "gemini":
+        raw = _gemini(prompt, wanted if wanted.startswith("gemini") else
+                      os.environ.get("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL)
+    elif backend == "anthropic":
+        raw = _anthropic(prompt, wanted if wanted.startswith("claude") else DEFAULT_MODEL,
+                         os.environ.get("ANTHROPIC_API_KEY"))
     elif backend == "stub":
         raw = _stub(prompt)
     else:

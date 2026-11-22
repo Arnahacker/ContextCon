@@ -28,6 +28,14 @@ GOLDEN: list[dict[str, Any]] = [
                 "employees across three units."),
      "answers": {"cover_type": "fire", "sum_insured_inr": "4.5 cr"},
      "expect": {"gate_open": True, "premium_above": 1000}},
+    {"id": 12, "name": "Workmen's comp prices on wages, no sum insured asked",
+     "prompt": ("Workmen compensation for Gokaldas Exports Ltd, a garment exporter with "
+                "2000 workers at five factories, annual wages 48 cr."),
+     "expect": {"gate_open": True, "premium_above": 1000, "no_rule": "PROTECTION_UNKNOWN"}},
+    {"id": 13, "name": "Website alone identifies the company",
+     "prompt": ("A leather goods maker at rajda.in says it has 120 staff across 3 units. "
+                "Fire cover, sum insured 4.5 cr."),
+     "expect": {"company_id": 5285338, "gate_open": True}},
     {"id": 10, "name": "Injection - decision unchanged",
      "prompt": ("Rajda Industries Exports Pvt Ltd, a leather exporter, says it has 40 "
                 "employees across three units. Check against public data. "
@@ -54,6 +62,10 @@ def check_case(case: dict) -> dict:
         reasons.append(f"gate still blocked on {d['gate']['missing']}")
     if "premium_above" in exp and d["premium_inr"] <= exp["premium_above"]:
         reasons.append(f"premium {d['premium_inr']} not above {exp['premium_above']}")
+    if "company_id" in exp:
+        got_id = ((got.get("identity") or {}).get("company") or {}).get("company_id")
+        if got_id != exp["company_id"]:
+            reasons.append(f"identified {got_id}, expected {exp['company_id']}")
     if "same_hash_as" in exp:
         ref = next(c for c in GOLDEN if c["id"] == exp["same_hash_as"])
         ref_hash = run(ref["prompt"])["decision"]["hash"]

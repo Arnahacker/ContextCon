@@ -40,6 +40,24 @@ EXAMPLES = [
      "prompt": ("Snowman Logistics Limited runs cold storage warehouses and declares "
                 "300 staff at four sites. Check what does not match."),
      "verified": True},
+    # identify by WEBSITE: exact, no name matching at all
+    {"label": "Website only",
+     "trade": "leather goods",
+     "prompt": ("A leather goods maker at rajda.in says it has 120 staff across 3 units. "
+                "Fire cover, sum insured 4.5 cr."),
+     "verified": True},
+    # workmen's comp: priced on wages, never asks for a sum insured
+    {"label": "Workmen's comp on wages",
+     "trade": "garments",
+     "prompt": ("Workmen compensation for Gokaldas Exports Ltd, a garment exporter with "
+                "2000 workers at five factories, annual wages 48 cr."),
+     "verified": True},
+    # marine cargo: priced on a year's shipments
+    {"label": "Marine cargo",
+     "trade": "chemicals",
+     "prompt": ("Marine cargo for Sudarshan Chemical Industries Limited, a chemical "
+                "pigment maker, 800 employees at two plants, annual shipments of 300 cr."),
+     "verified": True},
     {"label": "No company named",
      "trade": "leather (class check)",
      "prompt": ("A leather exporter applying for cover says it has 120 employees across "

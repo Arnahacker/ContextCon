@@ -41,11 +41,71 @@ def declared_facts(form) -> list[Fact]:
     if form.cover_type:
         out.append(Fact("cov_declared", "cover_type", form.cover_type, "declared",
                         MATCHES, DIRECT, None, Source(what="applicant statement")))
+    for fld, fid in (("annual_wages_inr", "wages_declared"),
+                     ("annual_shipments_inr", "ship_declared")):
+        v = getattr(form, fld, None)
+        if v:
+            out.append(Fact(fid, fld, v, "declared", MATCHES, DIRECT, None,
+                            Source(what="applicant statement", quote=f"Rs {v:,}")))
+    if getattr(form, "domain", None):
+        out.append(Fact("web_declared", "website", form.domain, "declared", MATCHES,
+                        DIRECT, None, Source(what="applicant statement", quote=form.domain)))
+    if getattr(form, "gstin", None):
+        out.append(Fact("gstin_declared", "gstin", form.gstin, "declared", MATCHES,
+                        DIRECT, None, Source(what="applicant statement", quote=form.gstin)))
     occ = to_occupancy(form.industry, form.activities)
     if occ != "unknown":
         out.append(Fact("occ_declared", "occupancy", occ, "declared", MATCHES, DIRECT,
                         None, Source(what="applicant statement",
                                      quote=form.industry or "")))
+    return out
+
+
+def gstin_facts(gstin: Optional[str], company_name: Optional[str],
+                record_state: Optional[str] = None) -> list[Fact]:
+    """What the GSTIN proves about itself - never that it belongs to them.
+
+    - check digit fails      -> contradicts: a typo or an invented number
+    - legal form disagrees   -> contradicts: "Pvt Ltd" on a proprietor's PAN
+    - registration state     -> context only: one company holds one GSTIN per
+                                state, so a different state is not a mismatch
+    """
+    from . import gst
+    if not gstin:
+        return []
+    g = gst.parse(gstin)
+    src = lambda what, quote: Source(what=what, quote=quote)
+    if g is None:
+        return [Fact("gstin_shape", "gstin_valid", False, "derived", CONTRADICTS, DIRECT,
+                     None, src("GSTIN format (15 characters: state, PAN, entity, Z, check)",
+                               gstin), note="not shaped like a GSTIN")]
+    out: list[Fact] = []
+    if not g["valid_check_digit"]:
+        out.append(Fact("gstin_check", "gstin_valid", False, "derived", CONTRADICTS, DIRECT,
+                        None, src("GSTIN check digit, computed", g["gstin"]),
+                        note="the last character does not match the other 14: a typo or "
+                             "an invented number"))
+    else:
+        out.append(Fact("gstin_check", "gstin_valid", True, "derived", MATCHES, DIRECT,
+                        None, src("GSTIN check digit, computed", g["gstin"]),
+                        note="well-formed; ownership needs the GST portal"))
+    said = gst.name_form(company_name)
+    if said and g["pan_type"] != said:
+        out.append(Fact("legal_form", "legal_form", g["legal_form"], "derived", CONTRADICTS,
+                        DIRECT, None,
+                        src("GSTIN -> PAN 4th character",
+                            f"{g['pan']}: '{g['pan_type']}' = {g['legal_form']}"),
+                        note=f"the name says {'a company' if said == 'C' else 'an LLP'}, "
+                             f"the GSTIN says {g['legal_form']}"))
+    if g["state"]:
+        same = bool(record_state) and g["state"].lower() in record_state.lower()
+        out.append(Fact("gst_state", "gst_state", g["state"], "derived",
+                        CONSISTENT_UNCONFIRMED, DIRECT, None,
+                        src("GSTIN -> state code", f"{g['state_code']} = {g['state']}"),
+                        note=("same state as the head office on record" if same else
+                              f"registered in {g['state']}"
+                              + (f"; head office on record is {record_state}" if record_state else "")
+                              + ". One GSTIN per state, so this is not a mismatch")))
     return out
 
 

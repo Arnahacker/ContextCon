@@ -45,6 +45,24 @@ def test_truncated_name_never_picks_among_four_rajdas():
     assert break_tie(tied, "Rajda Industries Exports Pvt Ltd")["company_id"] == 5285338
 
 
+def test_top_match_with_a_richer_duplicate_uses_the_richer_profile():
+    from invariant.identity import resolve
+    from invariant.schemas import Form
+    thin = {**cand("Gokaldas Exports Ltd.", None, 10516705), "score": 1.0}
+    rich = {**cand("Gokaldas Exports Limited", "gokaldasexports.com", 1723), "score": 0.6}
+    other = {**cand("Shahi Exports Pvt Ltd", "shahi.co.in", 26067), "score": 0.6}
+
+    class Fake:
+        def identify(self, names=None, domains=None):
+            return [{"matches": [{"confidence_score": c["score"],
+                                  "company_data": {"crustdata_company_id": c["company_id"],
+                                                   "basic_info": {"name": c["name"],
+                                                                  "primary_domain": c["domain"]}}}
+                                 for c in (thin, rich, other)]}]
+    got = resolve(Form(company_name="Gokaldas Exports Ltd"), Fake())
+    assert got.company["company_id"] == 1723
+
+
 def test_exact_legal_name_beats_a_higher_scored_plant_profile():
     plant = {**cand("Sudarshan Chemical Industries Limited, Roha And Mahad", None, 19933708)}
     real = {**cand("Sudarshan Chemical Industries Ltd.", "sudarshan.com", 4826), "score": 0.6}

@@ -20,6 +20,8 @@ HYPOTHETICAL = {
     "construction":    ("pucca", MATCHES),
     "protection":      ("hydrant", MATCHES),
     "sum_insured_inr": (10_000_000, MATCHES),
+    "annual_wages_inr": (20_000_000, MATCHES),
+    "annual_shipments_inr": (100_000_000, MATCHES),
     "cover_type":      ("fire", MATCHES),
     "occupancy":       ("light_manufacturing", MATCHES),
     "company_identity": ("crust:hypothetical", MATCHES),
@@ -48,7 +50,10 @@ def price_questions(facts: list[Fact], rules: dict[str, Any]) -> list[Question]:
     priced = assume_for_pricing(facts)   # so a blocked case still has a number to move
     now = decide(priced, rules)
     facts = priced
-    askable = (rules["gate"]["tier0"] + rules["gate"]["tier1"] + rules["gate"]["tier2"])
+    # what THIS cover needs, then the rest; a question survives only if
+    # answering it unblocks the gate or moves the premium
+    askable = list(dict.fromkeys(rules["gate"]["tier0"] + now.gate["missing"] +
+                                 rules["gate"]["tier1"] + rules["gate"]["tier2"]))
     out: list[Question] = []
 
     for fld in askable:

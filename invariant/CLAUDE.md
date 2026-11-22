@@ -57,7 +57,7 @@ Input is ALWAYS a short prompt. No PDF, no email, no file upload.
 pip install -r requirements.txt
 cp .env.example .env        # Windows: copy .env.example .env
 ./run.sh                    # Windows: run.bat      -> localhost:8000
-pytest -q                   # 42 tests, no network
+pytest -q                   # 65 tests, no network
 ```
 
 With no keys it runs end to end on `mocks/*.json` with a regex reader.
@@ -88,6 +88,10 @@ invariant/
   ledger.py     credits per call. budget.py: per-run ceiling -> HOLD, never crash.
   approvals.py  nothing irreversible leaves without a click.
   rewrites.py   the 8 fixed wordings. cases.py: golden cases.
+  examples.py   on-screen examples, each verified live; replayed offline from
+                mocks/by_request/. Re-record them when you change a request body.
+  gst.py        what a GSTIN proves about itself: check digit, legal form, state.
+                Never that it belongs to the company (that needs the GST portal).
 ```
 
 ## Crustdata, as it really behaves
@@ -132,6 +136,19 @@ Base `https://api.crustdata.com`, headers `authorization: Bearer <key>` and
 
 Verified live: `/company/identify`, `/company/enrich`, `/job/search`,
 `/web/search/live` (22 Nov). Real responses are in `mocks/`.
+
+## Covers and inputs
+
+- Covers live in `rules.yaml -> covers`: fire, burglary, marine_cargo, wc. Each
+  names its basis (sum insured / annual shipments / annual wages), its rate
+  table, and what it `needs` before it can be priced. `decide.py` reads them;
+  a loading with `applies_to` only fires on those covers.
+- A broker can give a company name, a website (identified by domain first,
+  exact) or a GSTIN.
+- Read step: **Gemini** when GEMINI_API_KEY is set (google-genai SDK, JSON
+  output against FORM_JSON_SCHEMA, temperature 0, fixed seed; model from
+  GEMINI_MODEL, default gemini-2.5-flash). Claude (`claude-opus-5-5`) is kept
+  as a second backend. READ_MODEL only applies to the backend it names.
 
 ## Findings we deliberately do NOT make (each was wrong on live data)
 

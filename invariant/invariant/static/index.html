@@ -122,7 +122,7 @@ details summary{cursor:pointer;color:var(--dim);font-size:12px;margin-top:8px}
 <header><h1>INVARIANT</h1>
 <span class="sub">the same decision however it is worded — a dated source behind every reason</span>
 <span class="badge" id="verBadge">rules —</span>
-<nav><button class="on" data-tab="desk">Underwrite</button><button data-tab="rules">Rules</button>
+<nav><button class="on" data-tab="desk">Underwrite</button><button data-tab="batch">Batch</button><button data-tab="rules">Rules</button>
  <button data-tab="inv">Invariance</button><button data-tab="tests">Tests</button></nav></header>
 
 <main>
@@ -130,7 +130,7 @@ details summary{cursor:pointer;color:var(--dim);font-size:12px;margin-top:8px}
 <section id="desk">
  <div class="card">
   <h2>Submission</h2>
-  <p class="hint">Type what a broker would send. Two lines is enough — no forms, no files. Or pick an example: each one is a hypothetical submission checked against live Crustdata records.</p>
+  <p class="hint">Type what a broker would send. Two lines is enough — no forms, no files. A company name, a website or a GSTIN all work; so do fire, burglary, marine cargo and workmen's comp. Or pick an example: each is a hypothetical submission checked against live Crustdata records.</p>
   <textarea id="prompt" rows="3">A leather exporter applying for cover says it has 120 employees across three units. Check that against public data and tell me what does not match.</textarea>
   <div class="chips" id="examples"></div>
   <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -181,6 +181,20 @@ details summary{cursor:pointer;color:var(--dim);font-size:12px;margin-top:8px}
  </div>
 </section>
 
+<!-- =============================================================== BATCH -->
+<section id="batch" class="hidden">
+ <div class="card">
+  <h2>Several submissions at once</h2>
+  <p class="hint">One submission per line, up to 10. Each runs the full check against live records &mdash; roughly 3 to 5 Crustdata credits for a company not seen before, nothing for one already checked. Results are ranked: declines and holds first, then referrals, then quotes.</p>
+  <textarea id="batchIn" rows="7" placeholder="Rajda Industries Exports Pvt Ltd, leather exporter, 120 staff, 3 units, fire cover 4.5 cr&#10;Workmen compensation for Gokaldas Exports Ltd, 2000 workers, annual wages 48 cr&#10;A leather goods maker at rajda.in, 120 staff, 3 units"></textarea>
+  <div style="margin-top:10px;display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+   <button class="go" id="batchBtn" onclick="runBatch()">Run all</button>
+   <button class="ghost" onclick="fillBatch()">Fill with the examples</button>
+   <span class="muted" id="batchStatus"></span></div>
+ </div>
+ <div class="card"><h2>Results</h2><div id="batchOut"><div class="empty">Not run yet.</div></div></div>
+</section>
+
 <!-- =============================================================== RULES -->
 <section id="rules" class="hidden">
  <div class="card">
@@ -220,7 +234,7 @@ details summary{cursor:pointer;color:var(--dim);font-size:12px;margin-top:8px}
 <script>
 const $=s=>document.querySelector(s), drawer=$('#drawer'), tip=$('#tip');
 let CASE=null, ANSWERS={}, RULES=null, PATCH={};
-const TABS=['desk','rules','inv','tests'];
+const TABS=['desk','batch','rules','inv','tests'];
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); TABS.forEach(t=>$('#'+t).classList.toggle('hidden',t!==b.dataset.tab));});
@@ -235,11 +249,13 @@ const NAMES={headcount:'Staff numbers',sites:'Number of premises',undeclared_sit
  hiring_abroad:'Hiring abroad',company_name:'Legal name',year_founded:'Founded',
  employee_count_range:'Size band',stated_activities:'What they say they do',role_mix:'Who works there',
  annual_wages_inr:'Annual wages',evidence_unavailable:'Source unavailable',
- stale_job_listings:'Old job listings (not used)'};
+ stale_job_listings:'Old job listings (not used)',annual_shipments_inr:'Annual shipments',
+ website:'Website',gstin:'GSTIN',gstin_valid:'GSTIN check digit',legal_form:'Legal form',gst_state:'GST state'};
 const nm=f=>NAMES[f]||f.replace(/_/g,' ');
 const STATUS={contradicts:'contradicts',undeclared:'not declared',matches:'matches',
  consistent_unconfirmed:'consistent',cannot_verify:"can't verify",unchecked:'unchecked'};
-const fmtVal=(fld,v)=>v==null?'—':(/_inr$/.test(fld)&&!isNaN(v))?rs(v):String(v).replace(/_/g,' ');
+const COVERS={fire:'fire & allied perils',burglary:'burglary & theft',marine_cargo:'marine cargo',wc:"workmen's comp"};
+const fmtVal=(fld,v)=>v==null?'—':fld==='cover_type'?(COVERS[v]||v):(/_inr$/.test(fld)&&!isNaN(v))?rs(v):String(v).replace(/_/g,' ');
 
 // ------------------------------------------------------------- sources drawer
 let SRCS=[];
@@ -269,7 +285,8 @@ function openFacts(ids,title){
 }
 
 // ------------------------------------------------------------- examples
-fetch('/api/examples').then(r=>r.json()).then(d=>{
+let EXAMPLES=[];
+fetch('/api/examples').then(r=>r.json()).then(d=>{ EXAMPLES=d.examples;
   $('#examples').innerHTML=d.examples.map((e,i)=>`<button class="chip" data-i="${i}">${esc(e.label)}<small>${esc(e.trade)}</small></button>`).join('');
   document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{$('#prompt').value=d.examples[c.dataset.i].prompt;go();});
 });
@@ -313,9 +330,11 @@ function submitAnswers(){
   go(true);
 }
 const INPUTS={cover_type:`<select data-ans="cover_type"><option value="">choose…</option>
-  <option value="fire">Fire / property</option><option value="wc">Workmen's compensation</option></select>`,
+  <option value="fire">Fire / property</option><option value="burglary">Burglary &amp; theft</option>
+  <option value="marine_cargo">Marine cargo</option><option value="wc">Workmen's compensation</option></select>`,
  sum_insured_inr:`<input data-ans="sum_insured_inr" placeholder="e.g. 4.5 cr  or  50 lakh  or  50000000">`,
- annual_wages_inr:`<input data-ans="annual_wages_inr" placeholder="e.g. 2.4 cr">`,
+ annual_wages_inr:`<input data-ans="annual_wages_inr" placeholder="total yearly wage bill, e.g. 2.4 cr">`,
+ annual_shipments_inr:`<input data-ans="annual_shipments_inr" placeholder="value shipped in a year, e.g. 40 cr">`,
  claims_history:`<input data-ans="claims_history" placeholder="e.g. none in five years">`,
  construction:`<input data-ans="construction" placeholder="e.g. pucca / brick and concrete">`,
  protection:`<input data-ans="protection" placeholder="e.g. hydrant + extinguishers">`,
@@ -390,10 +409,10 @@ function renderGap(c){
   if(!rows.length){$('#gap').innerHTML='<div class="empty">No checks ran.</div>';return;}
   // a CHECK compares something they said, or flags something they did not say.
   // Everything else is background from the record: useful, but not a check.
-  const BACKGROUND=new Set(['company_name','year_founded','employee_count_range','stated_activities',
+  const BACKGROUND=new Set(['gst_state','website','company_name','year_founded','employee_count_range','stated_activities',
     'role_mix','headcount_growth_pct','staff_abroad','hiring_abroad','hiring_location','stale_job_listings']);
   const isCheck=r=>!BACKGROUND.has(r.field)&&(r.said!=null||['contradicts','undeclared'].includes(r.status)
-    ||['company_identity','adverse_event','class_benchmark','class_percentile','certification','evidence_unavailable'].includes(r.field));
+    ||['company_identity','adverse_event','class_benchmark','class_percentile','certification','evidence_unavailable','gstin_valid','legal_form'].includes(r.field));
   const table=rs_=>`<div style="overflow-x:auto"><table><tr><th>Check</th><th>They said</th><th>Public record</th><th>Verdict</th><th>Source</th></tr>
    ${rs_.map(r=>`<tr><td>${esc(nm(r.field))}</td><td>${esc(fmtVal(r.field,r.said))}</td>
      <td>${esc(fmtVal(r.field,r.record))}${r.note?`<div class="muted">${esc(r.note)}</div>`:''}</td>
@@ -439,9 +458,46 @@ function renderWaterfall(c){
   });
 }
 
+// ------------------------------------------------------------- batch
+const RANK={decline:0,hold:1,refer:2,quote:3};
+let BATCH=[];
+function fillBatch(){$('#batchIn').value=EXAMPLES.filter(e=>e.verified).map(e=>e.prompt).slice(0,10).join('\n');}
+async function runBatch(){
+  const lines=$('#batchIn').value.split('\n').map(x=>x.trim()).filter(Boolean);
+  if(!lines.length) return;
+  if(lines.length>10){$('#batchStatus').innerHTML='<span class="no">10 lines at most, so a batch cannot run away with the credits.</span>';return;}
+  $('#batchBtn').disabled=true; BATCH=[]; let credits=0;
+  for(let i=0;i<lines.length;i++){
+    $('#batchStatus').innerHTML=`<span class="spin"></span>${i+1} of ${lines.length}…`;
+    try{const r=await fetch('/api/run',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({prompt:lines[i],rules_patch:PATCH})});
+      const c=await r.json(); credits+=(c.ledger||{}).credits||0; BATCH.push(c);}
+    catch(e){BATCH.push({prompt:lines[i],error:String(e),decision:{outcome:'hold',premium_inr:0,gate:{blocked:true,missing:[]}}});}
+    drawBatch();
+  }
+  $('#batchStatus').textContent=`done · ${credits.toFixed(2)} credits`; $('#batchBtn').disabled=false;
+}
+function drawBatch(){
+  const rows=BATCH.map((c,i)=>({c,i})).sort((a,b)=>(RANK[a.c.decision.outcome]??9)-(RANK[b.c.decision.outcome]??9)
+    ||(b.c.decision.premium_inr||0)-(a.c.decision.premium_inr||0));
+  $('#batchOut').innerHTML=`<div style="overflow-x:auto"><table><tr><th>Outcome</th><th>Company</th><th>Cover</th><th>Premium</th><th>Flags</th><th></th></tr>
+   ${rows.map(({c,i})=>{const d=c.decision, id=c.identity||{}, co=id.company;
+     const flags=(c.facts||[]).filter(f=>['contradicts','undeclared'].includes(f.status)).map(f=>nm(f.field));
+     return `<tr><td><b class="o-${d.outcome}">${esc(d.outcome.toUpperCase())}</b>${d.hold_reason?`<div class="muted">${esc(d.hold_reason.replace(/_/g,' '))}</div>`:''}</td>
+      <td>${esc(co?co.name:(c.form||{}).company_name||'not identified')}<div class="muted">${esc((c.prompt||'').slice(0,70))}${(c.prompt||'').length>70?'…':''}</div></td>
+      <td>${esc(COVERS[(c.form||{}).cover_type||'fire']||'fire')}</td>
+      <td class="mono">${d.outcome==='hold'?'—':d.gate&&d.gate.blocked?rs(c.provisional_premium_inr)+'<div class="muted">provisional</div>':rs(d.premium_inr)}</td>
+      <td>${flags.length?flags.map(x=>`<span class="pill undeclared" style="margin:0 4px 4px 0">${esc(x)}</span>`).join(''):'<span class="muted">none</span>'}</td>
+      <td><button class="ghost" onclick="openBatch(${i})">open</button></td></tr>`;}).join('')}</table></div>`;
+}
+function openBatch(i){const c=BATCH[i]; CASE=c; ANSWERS={}; $('#prompt').value=c.prompt||'';
+  document.querySelector('nav button[data-tab=desk]').click(); $('#trace').innerHTML=''; render(c);}
+
 // ------------------------------------------------------------- rules tab
 const RULE_GROUPS=[
  ['Fire rate per mille, by occupancy','occupancy_rate_per_mille',null],
+ ['Burglary rate per mille of sum insured','burglary_rate_per_mille',null],
+ ['Marine cargo rate per mille of annual shipments','marine_rate_per_mille',null],
  ["Workmen's comp rate per ₹100 of wages",'wc_rate_per_100_wages',null],
  ['Loadings (× multiplier)','loadings','multiplier'],
  ['Discounts (× multiplier)','discounts','multiplier'],

@@ -59,34 +59,49 @@ def decision_hash(facts: Iterable[Fact], company_id: Optional[str],
 
 
 # ----------------------------------------------------------------- premium
+def cover_of(facts, rules) -> str:
+    """The line of cover being priced. Unknown names fall back to fire."""
+    cover = value_of(facts, "cover_type", "fire")
+    known = set(rules.get("covers") or {}) | {"fire", "wc"}
+    return cover if cover in known else "fire"
+
+
+def needs_for(cover: str, rules) -> list[str]:
+    """What must be resolved before THIS cover can be priced. Workmen's comp
+    has no sum insured; marine is rated on shipments, not buildings."""
+    spec = (rules.get("covers") or {}).get(cover) or {}
+    return list(spec.get("needs") or rules["gate"]["tier1"])
+
+
 def _exposure_premium(facts, rules) -> tuple[float, list[Step], list[str]]:
-    """Base premium before modifiers. Returns (amount, steps, notes)."""
+    """Base premium before modifiers: basis / per x rate[occupancy].
+    Every number comes from the rules passed in. Returns (amount, steps, notes)."""
     steps: list[Step] = []
     notes: list[str] = []
-    cover = value_of(facts, "cover_type", "fire")
+    cover = cover_of(facts, rules)
+    spec = (rules.get("covers") or {}).get(cover)
+    if spec is None:   # rules without a covers section: the original two lines
+        spec = ({"basis": "annual_wages_inr", "rate_table": "wc_rate_per_100_wages", "per": 100}
+                if cover == "wc" else
+                {"basis": "sum_insured_inr", "rate_table": "occupancy_rate_per_mille", "per": 1000})
 
-    if cover == "wc":
-        wages = value_of(facts, "annual_wages_inr")
-        if wages is None:
-            return 0.0, steps, ["wages not established"]
-        cat = value_of(facts, "wc_category", "unknown")
-        rate = rules["wc_rate_per_100_wages"].get(cat, rules["wc_rate_per_100_wages"]["unknown"])
-        base = (wages / 100.0) * rate
-        steps.append(Step(rule=f"WC_BASE_{cat.upper()}", multiplier=rate,
-                          because=[f.id for f in by_field(facts, "annual_wages_inr")],
-                          explain=f"wages {wages:,.0f} / 100 x {rate} per 100"))
-        return base, steps, notes
-
-    si = value_of(facts, "sum_insured_inr")
-    if si is None:
-        return 0.0, steps, ["sum insured not established"]
+    basis_name = spec["basis"].replace("_inr", "").replace("_", " ")
+    basis = value_of(facts, spec["basis"])
+    if basis is None:
+        return 0.0, steps, [f"{basis_name} not established"]
     occ = value_of(facts, "occupancy", "unknown")
-    table = rules["occupancy_rate_per_mille"]
-    rate = table.get(occ, table["unknown"])
-    base = (si / 1000.0) * rate
-    steps.append(Step(rule=f"FIRE_BASE_{occ.upper()}", multiplier=rate,
-                      because=[f.id for f in by_field(facts, "occupancy")] or ["occupancy_default"],
-                      explain=f"sum insured {si:,.0f} / 1000 x {rate} per mille"))
+    if cover == "wc":   # an explicit WC category beats the occupancy
+        occ = value_of(facts, "wc_category", occ)
+    table = rules[spec["rate_table"]]
+    rate = table.get(occ, table.get("unknown", 1.0))
+    per = spec.get("per", 1000)
+    base = (basis / float(per)) * rate
+    unit = "per mille" if per == 1000 else f"per {per}"
+    because = ([f.id for f in by_field(facts, spec["basis"])] +
+               [f.id for f in by_field(facts, "occupancy")]) or ["occupancy_default"]
+    steps.append(Step(rule=f"{cover.upper()}_BASE_{str(occ).upper()}", multiplier=rate,
+                      because=because,
+                      explain=f"{basis_name} {basis:,.0f} / {per} x {rate} {unit} ({occ})"))
     return base, steps, notes
 
 
@@ -94,16 +109,22 @@ def _modifiers(facts, rules) -> list[Step]:
     """Named multipliers, each tied to the facts that triggered it."""
     out: list[Step] = []
     L, D = rules["loadings"], rules["discounts"]
+    cover = cover_of(facts, rules)
+
+    def applies(spec) -> bool:   # a fire-protection loading means nothing on WC
+        return "applies_to" not in spec or cover in spec["applies_to"]
 
     def load(name: str, because: list[str]):
         spec = L[name]
-        out.append(Step(rule=name, multiplier=spec["multiplier"],
-                        because=because, explain=spec["explain"]))
+        if applies(spec):
+            out.append(Step(rule=name, multiplier=spec["multiplier"],
+                            because=because, explain=spec["explain"]))
 
     def give(name: str, because: list[str]):
         spec = D[name]
-        out.append(Step(rule=name, multiplier=spec["multiplier"],
-                        because=because, explain=spec["explain"]))
+        if applies(spec):
+            out.append(Step(rule=name, multiplier=spec["multiplier"],
+                            because=because, explain=spec["explain"]))
 
     ident = first(facts, "company_identity")
     if ident is None or ident.status == CANNOT_VERIFY or ident.value is None:
@@ -147,10 +168,14 @@ def _modifiers(facts, rules) -> list[Step]:
     return out
 
 
+def is_base(rule: str) -> bool:
+    return "_BASE_" in rule
+
+
 def _apply(base: float, steps: list[Step], rules) -> int:
     total = base
     for s in steps:
-        if s.rule.startswith(("FIRE_BASE", "WC_BASE")):
+        if is_base(s.rule):
             continue
         total *= s.multiplier
     total = max(total, rules["minimum_premium_inr"]) if base > 0 else 0.0
@@ -192,8 +217,8 @@ def decide(facts: list[Fact], rules: dict[str, Any]) -> Decision:
                      notes=[rule["explain"]])
 
     # 4. the intake gate
-    missing = [fld for fld in rules["gate"]["tier0"] + rules["gate"]["tier1"]
-               if not resolved(facts, fld)]
+    need = rules["gate"]["tier0"] + needs_for(cover_of(facts, rules), rules)
+    missing = [fld for fld in dict.fromkeys(need) if not resolved(facts, fld)]
     blocked = bool(missing)
 
     # 5. price it

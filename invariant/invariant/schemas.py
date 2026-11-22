@@ -11,6 +11,8 @@ FORM_FIELDS = [
     "company_name", "trade_names", "industry", "declared_headcount",
     "declared_sites", "countries", "activities", "cover_type",
     "sum_insured_inr", "ask",
+    # added 22 Nov: identify by website, check a GSTIN, price WC and marine
+    "domain", "gstin", "annual_wages_inr", "annual_shipments_inr",
 ]
 
 
@@ -26,6 +28,10 @@ class Form:
     cover_type: Optional[str] = None
     sum_insured_inr: Optional[int] = None
     ask: Optional[str] = None
+    domain: Optional[str] = None
+    gstin: Optional[str] = None
+    annual_wages_inr: Optional[int] = None
+    annual_shipments_inr: Optional[int] = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -49,9 +55,17 @@ FORM_JSON_SCHEMA: dict[str, Any] = {
         "declared_sites":     {"type": ["integer", "null"]},
         "countries":          {"type": "array", "items": {"type": "string"}},
         "activities":         {"type": "array", "items": {"type": "string"}},
-        "cover_type":         {"type": ["string", "null"], "enum": ["fire", "wc", None]},
+        "cover_type":         {"type": ["string", "null"],
+                               "description": "fire, burglary, marine_cargo or wc "
+                                              "(workmen's compensation), only if stated"},
         "sum_insured_inr":    {"type": ["integer", "null"]},
         "ask":                {"type": ["string", "null"]},
+        "domain":             {"type": ["string", "null"],
+                               "description": "the company's website, if given"},
+        "gstin":              {"type": ["string", "null"],
+                               "description": "a 15-character GST number, if given"},
+        "annual_wages_inr":   {"type": ["integer", "null"]},
+        "annual_shipments_inr": {"type": ["integer", "null"]},
     },
     "required": FORM_FIELDS,
 }
