@@ -160,7 +160,9 @@ class CrustdataClient:
         self.api_key = api_key if api_key is not None else os.environ.get("CRUSTDATA_API_KEY", "")
         self.sanctions_key = os.environ.get("OPENSANCTIONS_API_KEY", "")
         if offline is None:
-            offline = os.environ.get("INVARIANT_OFFLINE", "").lower() in ("1", "true", "yes") or not self.api_key
+            offline = (os.environ.get("INVARIANT_OFFLINE", "").lower() in ("1", "true", "yes")
+                       or os.environ.get("INVARIANT_EVIDENCE_OFFLINE", "").lower() in ("1", "true", "yes")
+                       or not self.api_key)
         self.offline = offline
         self.mode = "offline" if offline else "live"
         self.fixtures_dir = Path(fixtures_dir or FIXTURES)

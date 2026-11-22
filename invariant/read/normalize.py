@@ -166,10 +166,30 @@ _INDUSTRY_KEYWORDS = [
 ]
 
 
+_VOCAB = sorted({w for _, ws in _INDUSTRY_KEYWORDS for w in ws if " " not in w and len(w) >= 5}
+                | {"export", "exporter", "manufacturer", "manufacturing", "stitching"})
+
+
+def fix_typos(text: str) -> str:
+    """Snap near-miss words (one edit away, 5+ letters) onto the industry vocabulary:
+    'lether' -> 'leather', 'tanery' -> 'tannery'. Deterministic; exact words untouched."""
+    import difflib
+
+    def fix(m: re.Match) -> str:
+        w = m.group(0)
+        lw = w.lower()
+        if len(lw) < 5 or lw in _VOCAB:
+            return w
+        best = difflib.get_close_matches(lw, _VOCAB, n=1, cutoff=0.83)
+        return best[0] if best else w
+
+    return re.sub(r"[A-Za-z]+", fix, text)
+
+
 def normalize_industry(text: Optional[str]) -> Optional[str]:
     if not text or not str(text).strip():
         return None
-    t = str(text).lower().replace("_", " ")
+    t = fix_typos(str(text).lower().replace("_", " "))
     if t.strip() in OCCUPANCIES:
         return t.strip()
     for occ, words in _INDUSTRY_KEYWORDS:
@@ -291,7 +311,7 @@ _SINGULAR = {"garments": "garment", "shoes": "shoe", "hides": "hide", "goods": "
 
 
 def normalize_activity(a: str) -> Optional[str]:
-    t = re.sub(r"[^a-z ]", " ", a.lower())
+    t = re.sub(r"[^a-z ]", " ", fix_typos(a.lower()))
     t = re.sub(r"\b(?:the|a|an|we|only|do|just|of|and)\b", " ", t)
     t = re.sub(r"\s+", " ", t).strip()
     if not t:
@@ -355,7 +375,9 @@ def looks_like_injection(text: Optional[str]) -> bool:
 def normalize_form(raw: dict, text: Optional[str] = None) -> Form:
     """Raw tool input (as the LLM wrote it) -> canonical Form."""
     company = normalize_company(raw.get("company_name"))
-    industry = normalize_industry(raw.get("industry")) or _industry_from_name(company)
+    industry = normalize_industry(raw.get("industry"))
+    if industry in (None, "other"):  # unmapped label: the company name often says it ("Hide", "Tanners")
+        industry = _industry_from_name(company) or industry
     city = normalize_city(raw.get("city")) or _city_from_name(company)
     return Form(
         company_name=company,

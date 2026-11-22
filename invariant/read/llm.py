@@ -32,7 +32,7 @@ FIXTURES = ROOT / "fixtures" / "llm"
 CACHE_DB = ROOT / "data" / "llm_cache.sqlite"
 
 MODEL = os.environ.get("INVARIANT_LLM_MODEL", "claude-opus-5-5")  # Claude model
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 TIMEOUT_S = float(os.environ.get("INVARIANT_LLM_TIMEOUT", "30"))
 
@@ -151,7 +151,8 @@ def _live_claude(*, system: str, tool: dict, user_text: str) -> dict[str, Any]:
 
 # ------------------------------------------------------------------ gemini
 
-_gemini_model: str | None = None
+_gemini_models: list[str] | None = None
+_GEMINI_SKIP = (404, 429, 500, 503)  # retired, rate-limited or overloaded: try the next model
 
 
 def _gemini_post(model: str, body: dict) -> httpx.Response:
@@ -159,52 +160,61 @@ def _gemini_post(model: str, body: dict) -> httpx.Response:
                       headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"]})
 
 
-def _gemini_pick_model() -> str:
-    """The configured model if it exists, else the newest available 'flash' model."""
+def _gemini_candidates() -> list[str]:
+    """Configured model first, then available text 'flash' models, newest first."""
     r = httpx.get(f"{GEMINI_BASE}/models", timeout=TIMEOUT_S, params={"pageSize": 200},
                   headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"]})
     r.raise_for_status()
     names = [m["name"].split("/", 1)[1] for m in r.json().get("models", [])
              if "generateContent" in m.get("supportedGenerationMethods", [])]
-    if GEMINI_MODEL in names:
-        return GEMINI_MODEL
-    flash = sorted((n for n in names if "flash" in n and "lite" not in n and "image" not in n
-                    and "tts" not in n and "exp" not in n), reverse=True)
-    if not flash:
+    flash = sorted((n for n in names if "flash" in n and not any(x in n for x in ("lite", "image", "tts", "exp", "live", "audio"))),
+                   reverse=True)
+    ordered = ([GEMINI_MODEL] if GEMINI_MODEL in names else []) + [n for n in flash if n != GEMINI_MODEL]
+    if not ordered:
         raise RuntimeError(f"no usable Gemini flash model in {names[:10]}")
-    log.warning("read: Gemini model %s not available, using %s", GEMINI_MODEL, flash[0])
-    return flash[0]
+    return ordered
 
 
 def _live_gemini(*, system: str, tool: dict, user_text: str) -> tuple[dict[str, Any], str]:
-    global _gemini_model
-    if _gemini_model is None:
-        _gemini_model = _gemini_pick_model()
+    global _gemini_models
+    if _gemini_models is None:
+        _gemini_models = _gemini_candidates()
     schema = tool["input_schema"]
     instruction = (f"{system}\n\nReturn ONLY a JSON object for `{tool['name']}`: "
                    f"{tool.get('description', '')}")
-    body = {
-        "systemInstruction": {"parts": [{"text": instruction}]},
-        "contents": [{"role": "user", "parts": [{"text": user_text}]}],
-        "generationConfig": {"temperature": 0, "responseMimeType": "application/json",
-                             "responseJsonSchema": schema},
-    }
-    r = _gemini_post(_gemini_model, body)
-    if r.status_code == 400:  # schema keyword not accepted: describe it in the prompt instead
-        body["generationConfig"].pop("responseJsonSchema")
-        body["systemInstruction"]["parts"][0]["text"] += "\nJSON schema:\n" + json.dumps(schema)
-        r = _gemini_post(_gemini_model, body)
-    r.raise_for_status()
-    data = r.json()
-    cands = data.get("candidates") or []
-    if not cands:
-        raise RuntimeError(f"Gemini returned no candidates: {json.dumps(data.get('promptFeedback'))[:200]}")
-    text = "".join(p.get("text", "") for p in cands[0].get("content", {}).get("parts", []))
-    out = json.loads(text)
-    if not isinstance(out, dict):
-        raise RuntimeError("Gemini did not return a JSON object")
-    allowed = set(schema.get("properties", {}))
-    return {k: v for k, v in out.items() if k in allowed}, _gemini_model
+    errors = []
+    for model in list(_gemini_models):
+        body = {
+            "systemInstruction": {"parts": [{"text": instruction}]},
+            "contents": [{"role": "user", "parts": [{"text": user_text}]}],
+            "generationConfig": {"temperature": 0, "responseMimeType": "application/json",
+                                 "responseJsonSchema": schema},
+        }
+        r = _gemini_post(model, body)
+        if r.status_code == 400:  # schema keyword not accepted: describe it in the prompt instead
+            body["generationConfig"].pop("responseJsonSchema")
+            body["systemInstruction"]["parts"][0]["text"] += "\nJSON schema:\n" + json.dumps(schema)
+            r = _gemini_post(model, body)
+        if r.status_code in _GEMINI_SKIP:
+            errors.append(f"{model}: {r.status_code}")
+            if r.status_code == 404:  # retired for this key: never try it again this process
+                _gemini_models.remove(model)
+            continue
+        r.raise_for_status()
+        data = r.json()
+        cands = data.get("candidates") or []
+        if not cands:
+            raise RuntimeError(f"Gemini returned no candidates: {json.dumps(data.get('promptFeedback'))[:200]}")
+        text = "".join(p.get("text", "") for p in cands[0].get("content", {}).get("parts", []) if not p.get("thought"))
+        out = json.loads(text)
+        if not isinstance(out, dict):
+            raise RuntimeError("Gemini did not return a JSON object")
+        allowed = set(schema.get("properties", {}))
+        if _gemini_models and _gemini_models[0] != model:  # remember the one that works
+            _gemini_models.remove(model)
+            _gemini_models.insert(0, model)
+        return {k: v for k, v in out.items() if k in allowed}, model
+    raise RuntimeError(f"no Gemini model answered: {', '.join(errors)}")
 
 
 def nullable(t: str) -> dict:

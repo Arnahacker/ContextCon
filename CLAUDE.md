@@ -10,6 +10,7 @@ https://claude.ai/artifact/WwzFaC8U7ZS3CgcC8VMg7V).
 - App: `conda run -n invariant uvicorn invariant.api.app:app --port 8000`
 - Keys come from the environment or `.env` (never commit it): `CRUSTDATA_API_KEY`,
   `ANTHROPIC_API_KEY`, optional `OPENSANCTIONS_API_KEY`.
+- `INVARIANT_EVIDENCE_OFFLINE=1` keeps only Crustdata on fixtures (LLM reader stays live): use it while testing to save credits.
 - `INVARIANT_OFFLINE=1` serves Crustdata from `fixtures/crustdata/` and the LLM from
   `fixtures/llm/`, so everything runs without keys.
 

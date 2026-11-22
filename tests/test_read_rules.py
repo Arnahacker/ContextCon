@@ -43,7 +43,8 @@ def test_rules_raw_has_tool_shape():
     assert set(rules_extract(SUPER)) == set(TOOL["input_schema"]["properties"])
 
 
-def test_super_tannery_without_llm():
+def test_super_tannery_without_llm(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "FIXTURES", tmp_path)  # ignore any saved live reading of this prompt
     form, reader = extract_with_reader(SUPER)  # no fixture for it -> rules
     assert reader == "rules"
     assert form.company_name == "Super Tannery Ltd"
