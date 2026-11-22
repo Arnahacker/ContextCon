@@ -2,8 +2,7 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 60,
-      "includeFiles": "{invariant,fixtures}/**"
+      "includeFiles": "{invariant,fixtures,tests/cases,tests/rewrites}/**"
     }
-  },
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
+  }
 }

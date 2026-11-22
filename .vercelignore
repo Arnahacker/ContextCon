@@ -4,7 +4,9 @@ invariant/data/
 .env
 .env.*
 .venv/
-tests/
+.vercel/
 .pytest_cache/
 .claude/
 __pycache__/
+# the app reads tests/cases and tests/rewrites (built-in checks); the test code is not needed
+tests/*.py
