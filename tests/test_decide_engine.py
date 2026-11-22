@@ -523,3 +523,31 @@ def test_what_would_change_my_mind_shows_the_price_of_each_finding():
     assert d.outcome == "refer"
     f = next(x for x in d.would_flip_if if x.fact == "jobs_sites_1")
     assert f.then == "quote" and f.premium_inr < d.premium_inr
+
+
+def test_vague_record_turnover_is_asked_not_held_forever():
+    """Liability with only a record turnover band like $1B-$1T: ask for turnover."""
+    from invariant.decide import engine as eng
+    from invariant.shapes import Fact, Source
+    src = lambda q: Source(what="POST /company/enrich -> revenue.estimated", fetched="2026-11-22T00:00:00", quote=q)  # noqa: E731
+    dec = lambda f, v, q: Fact(id=f"d_{f}", field=f, value=v, origin="declared", evidence_kind="claim",  # noqa: E731
+                               status="consistent_unconfirmed", source=Source(what="applicant prompt", fetched="x", quote=q))
+    facts = [dec("company", "Acme", "company: Acme"), dec("occupancy", "retail", "occupancy: retail"),
+             dec("headcount", 500, "headcount: 500"), dec("sites", 1, "sites: 1"),
+             dec("cover_type", "liability", "cover_type: liability"),
+             dec("liability_limit", {"low": 10_000_000, "high": 10_000_000}, "liability_limit: 1 Cr"),
+             Fact(id="cd_turnover", field="turnover", value={"low": 88_000_000_000, "high": 88_000_000_000_000},
+                  origin="crustdata", evidence_kind="proxy_range", status="consistent_unconfirmed",
+                  company_match="company_id", source=src("revenue.estimated: 1B-1T"))]
+    a = eng.assess(facts)
+    assert "turnover" in a.missing
+    qs = eng.questions(facts, a)
+    assert any(q.field == "turnover" for q in qs)
+
+
+def test_product_names_and_idioms_are_not_fires():
+    from invariant.evidence.facts import adverse_type
+    assert adverse_type("Amazon's Alexa Tablet 12 Pro ditches Fire OS for real Android") is None
+    assert adverse_type("CEO under fire over layoffs") is None
+    assert adverse_type("Fire breaks out at Kanpur tannery unit") == "fire"
+    assert adverse_type("Police confirm death at Amazon warehouse") == "accident"

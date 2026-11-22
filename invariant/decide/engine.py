@@ -12,7 +12,7 @@ from invariant.shapes import Decision, Fact, Gate, Question, Source, Step
 
 from . import counterfactual, derive as derive_mod, gate, ladders, norms, rate_card, rules
 from .hashing import decision_hash
-from .values import Range, fact_range, headcount, is_range, mid, occupancy, pick
+from .values import Range, fact_range, facts_for, headcount, is_range, mid, occupancy, pick
 
 RULES_VERSION = "2026.11.22.5"
 MIN_QUESTION_WORTH = 5_000
@@ -188,10 +188,16 @@ def questions(raw: list[Fact], a: Assessment, optional: bool = True) -> list[Que
         if field == "sum_insured" and a.cover in REQUIRED:
             continue  # marine and liability are not priced on a sum insured
         st = ladders.state(a.facts, field)
+        pending = list(st.pending)
+        if field in a.missing and not pending and not any(
+                f.origin == "applicant_followup" for f in facts_for(a.facts, field)):
+            # a record value too vague to price on (turnover "$1B-$1T") still leaves the field
+            # missing: ask the applicant instead of holding with nothing to ask
+            pending = list(ladders.LADDERS[field][0])
         needed: set[str] = set()
         if field in a.missing:
-            needed = {s.field for s in st.pending if _unblocks(raw, a, s)} or {s.field for s in st.pending}
-        for spec in st.pending:
+            needed = {s.field for s in pending if _unblocks(raw, a, s)} or {s.field for s in pending}
+        for spec in pending:
             blocking = spec.field in needed
             # the cap stops optional questions, but never one we always offer (claims history has
             # no public record; dropping it after it was shown as "coming up" looked like a bug)
