@@ -186,14 +186,19 @@ def _sum_insured(text: str) -> Optional[str]:
 
 def _cover_type(text: str) -> Optional[str]:
     found = set()
-    for m in re.finditer(r"\b(fire|wc|w\.c\.|workm[ae]n'?s?\s*comp\w*|employees?'?\s*comp\w*|package)\b",
-                         text, re.I):
+    for m in re.finditer(r"\b(fire|property|wc|w\.c\.|workm[ae]n'?s?\s*comp\w*|employees?'?\s*comp\w*|package"
+                         r"|marine|cargo|liability)\b", text, re.I):
         window = text[max(0, m.start() - 40): m.end() + 40]
         if _COVER_WORDS.search(window):
             w = m.group(1).lower()
-            found.add("fire" if w == "fire" else "fire and wc" if w == "package" else "wc")
+            found.add({"fire": "fire", "property": "fire", "package": "fire and wc", "marine": "marine",
+                       "cargo": "marine", "liability": "liability"}.get(w, "wc"))
     if not found:
         return None
+    if found & {"fire", "wc", "fire and wc"}:
+        found -= {"marine", "liability"}  # a priced line wins; the other is noted by the broker
+    elif len(found) > 1:
+        return None  # marine AND liability: ask rather than guess
     return "fire and wc" if ("fire" in found and "wc" in found) or "fire and wc" in found else found.pop()
 
 

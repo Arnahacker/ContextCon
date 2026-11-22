@@ -207,7 +207,9 @@ def normalize_cover_type(text: Optional[str]) -> Optional[str]:
     if not text:
         return None
     t = str(text).lower()
-    fire = "fire" in t or "aag" in t
+    # Indian property cover IS the fire policy (Bharat Sookshma / Laghu Udyam Suraksha)
+    fire = "fire" in t or "aag" in t or bool(re.search(
+        r"\bproperty\b|sookshma|laghu udyam|material damage|building and stock|factory insurance", t))
     wc = bool(re.search(r"\bwc\b|workm[ae]n|worker|employee.?s?.? comp|compensation", t))
     both = bool(re.search(r"\bboth\b|fire.?wc|fire_wc", t))
     if both or (fire and wc):
@@ -216,6 +218,11 @@ def normalize_cover_type(text: Optional[str]) -> Optional[str]:
         return "wc"
     if fire:
         return "fire"
+    # recognised but not on the rate card: verified, then referred to a specialist
+    if re.search(r"\bmarine\b|\bcargo\b|\btransit\b|shipment", t):
+        return "marine"
+    if re.search(r"liabilit", t):
+        return "liability"
     return None
 
 

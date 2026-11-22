@@ -20,7 +20,7 @@ from invariant.shapes import Fact, Source
 PROMPT_VERSION = "answer-v1"
 
 MONEY_FIELDS = {"sum_insured", "turnover", "wages", "building_value", "machinery_value",
-                "monthly_sales", "stock_value", "pf_monthly"}
+                "monthly_sales", "stock_value", "pf_monthly", "cargo_value", "liability_limit"}
 COUNT_FIELDS = {"headcount", "sites", "stock_weeks"}
 AREA_FIELDS = {"building_area_sqft"}
 NUMERIC_FIELDS = MONEY_FIELDS | COUNT_FIELDS | AREA_FIELDS
@@ -111,17 +111,49 @@ def _is_pure_number(text: str) -> bool:
         for t in toks)
 
 
+def _plain(s: str) -> str:
+    # punctuation becomes a space (so "1-5 cr" never equals "15 cr"); "<" and "+" carry meaning in bands
+    return re.sub(r"\s+", " ", re.sub(r"[^\w\s<+]", " ", s.lower())).strip()
+
+
 def _match_option(reply: str, options: list[str]) -> Optional[str]:
-    r = re.sub(r"[^\w\s]", "", reply.lower()).strip()
-    by_lower = {o.lower(): o for o in options}
+    # reply and options get the same normalisation, so an option with punctuation
+    # ("Shahi Exports Pvt Ltd (shahi.co.in)") still matches itself
+    r = _plain(reply)
+    by_lower = {_plain(o): o for o in options}
     if r in by_lower:
         return by_lower[r]
     yes_no = "yes" if r in _YES or r.split()[:1] in (["haan"], ["yes"], ["ji"]) else \
         "no" if r in _NO or r.split()[:1] in (["nahi"], ["no"], ["nahin"]) else None
     if yes_no and yes_no in by_lower:
         return by_lower[yes_no]
-    hits = [o for o in options if re.search(rf"\b{re.escape(o.lower())}\b", r)]
+    hits = [o for o in options if _plain(o) and re.search(rf"\b{re.escape(_plain(o))}\b", r)]
     return hits[0] if len(hits) == 1 else None
+
+
+OPEN_BAND_FACTOR = 4  # "25+ Cr" is read as 25-100 Cr (illustrative ceiling for the open top band)
+
+
+def _option_reading(field: str, option: str) -> FieldReading:
+    """A picked option. For a money field the option is a band ("1-5 Cr", "<1 Cr", "25+ Cr"),
+    so it becomes a range, never the band text itself (which Decide cannot price)."""
+    if field in MONEY_FIELDS:
+        txt = option.strip()
+        rng = parse_range(txt)
+        if rng is None:
+            v, _ = _parse_single(txt.lstrip("<>+ ").rstrip("+ "))
+            if v is not None and txt.startswith("<"):
+                rng = (0.0, v)
+            elif v is not None and "+" in txt:
+                rng = (v, v * OPEN_BAND_FACTOR)
+            elif v is not None:  # a plain amount option, e.g. "1 Cr"
+                rng = (v, v)
+        if rng:
+            lo, hi = int(round(rng[0])), int(round(rng[1]))
+            mid = int(round((lo + hi) / 2))
+            return FieldReading(field=field, kind="value", value=mid, low=lo, high=hi,
+                                display=f"I read that as {option}: {_fmt_short(field, lo)} - {_fmt_short(field, hi)}")
+    return FieldReading(field=field, kind="value", value=option, display=f"I read that as: {option}")
 
 
 def _value_reading(field: str, value: str) -> FieldReading:
@@ -181,7 +213,7 @@ def read_answer(field: str, question: str, reply: str, options: Optional[list[st
     if options:
         hit = _match_option(reply, options)
         if hit is not None:
-            return FieldReading(field=field, kind="value", value=hit, display=f"I read that as: {hit}")
+            return _option_reading(field, hit)
     if field in NUMERIC_FIELDS and _is_pure_number(reply):
         got = _number_reading(field, reply)
         if got:
@@ -206,7 +238,7 @@ def read_answer(field: str, question: str, reply: str, options: Optional[list[st
         hit = _match_option(str(raw["value"]), options)
         if hit is None:
             return _refused(field)
-        return FieldReading(field=field, kind="value", value=hit, display=f"I read that as: {hit}")
+        return _option_reading(field, hit)
     return _value_reading(field, str(raw["value"]))
 
 

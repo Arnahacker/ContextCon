@@ -79,3 +79,26 @@ def test_same_meaning_same_fact():
 def test_numeric_prose_goes_to_llm_then_normalizer():
     r = read_answer("sum_insured", "Sum insured?", "the bank valued it, they said paanch crore for everything")
     assert r.kind == "value" and r.value == 50_000_000
+
+
+def test_option_with_punctuation_matches_itself():
+    # clicking "Shahi Exports Pvt Ltd (shahi.co.in)" used to be refused: the reply lost its
+    # punctuation before comparing, the option kept it
+    opts = ["Shahi Exports Pvt Ltd (shahi.co.in)", "Modelama Exports Pvt Ltd (modelama.com)"]
+    r = read_answer("company", "Which company do you mean?", opts[0], opts)
+    assert r.kind == "value" and r.value == opts[0]
+
+
+def test_band_option_becomes_a_range_not_text():
+    bands = ["<1 Cr", "1-5 Cr", "5-25 Cr", "25+ Cr"]
+    q = "Which band is the total value in?"
+    r = read_answer("sum_insured", q, "1-5 Cr", bands)
+    assert (r.low, r.high, r.value) == (10_000_000, 50_000_000, 30_000_000)
+    r = read_answer("sum_insured", q, "<1 Cr", bands)
+    assert (r.low, r.high) == (0, 10_000_000)
+    r = read_answer("sum_insured", q, "25+ Cr", bands)
+    assert r.low == 250_000_000 and r.high > r.low
+    f = followup_fact(r, FETCHED)
+    assert f.value == {"low": 250_000_000, "high": int(r.high)}
+    # a typed "15 cr" must not be mistaken for the "1-5 Cr" band
+    assert read_answer("sum_insured", q, "15 cr", bands).value != 30_000_000
