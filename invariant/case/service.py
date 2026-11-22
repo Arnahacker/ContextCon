@@ -9,7 +9,8 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-from invariant.case import store
+from invariant.case import insights, store
+from invariant.decide.breakdown import breakdown
 from invariant.contracts import DecideInput, EvidenceResult, FieldReading
 from invariant.decide.derive import derive
 from invariant.decide.engine import decide
@@ -65,7 +66,8 @@ def _decide(case_id: str, st: dict, extra: Optional[list[Fact]] = None) -> Decis
             resolution=ev.resolution,
             facts=facts,
             unavailable=list(ev.unavailable),
-            questions_asked=len(st["answers"]),
+            # yes/no checks on record findings are not optional questions: they never use up the cap
+            questions_asked=sum(1 for f in st["answers"] if not f.field.startswith("confirm_")),
             injection_attempt=st["form"].injection_attempt,
         )
     )
@@ -90,20 +92,43 @@ def run_case(prompt: str) -> str:
 
 def resume(case_id: str) -> Decision:
     """Run whatever steps are missing. Safe to call repeatedly."""
+    while step(case_id):
+        pass
+    return Decision.model_validate(store.last(case_id, "decision"))
+
+
+STAGES = ["read", "evidence", "decide"]
+
+
+def next_stage(case_id: str) -> Optional[str]:
     if store.last(case_id, "form") is None:
+        return "read"
+    if store.last(case_id, "evidence") is None:
+        return "evidence"
+    if store.last(case_id, "decision") is None:
+        return "decide"
+    return None
+
+
+def step(case_id: str) -> Optional[str]:
+    """Run exactly one missing stage, so the screen can show real progress.
+    Returns the stage that ran, or None when the case was already complete."""
+    stage = next_stage(case_id)
+    if stage is None:
+        return None
+    if stage == "read":
         prompt = store.events(case_id)[0]["payload"]["text"]
         form, reader = extract_with_reader(prompt)
         store.append(case_id, "form", form.model_dump(mode="json"))
         store.append(case_id, "reader", {"reader": reader})
         if form.injection_attempt:
             store.append(case_id, "finding", {"kind": "injection_attempt"})
-    if store.last(case_id, "evidence") is None:
+    elif stage == "evidence":
         form = Form.model_validate(store.last(case_id, "form"))
-        ev = gather(form)
-        store.append(case_id, "evidence", ev.model_dump(mode="json"))
-    if store.last(case_id, "decision") is None:
-        return _redecide(case_id)
-    return Decision.model_validate(store.last(case_id, "decision"))
+        store.append(case_id, "evidence", gather(form).model_dump(mode="json"))
+    else:
+        _redecide(case_id)
+    return stage
 
 
 def choose_company(case_id: str, domain: str) -> Decision:
@@ -196,9 +221,9 @@ def view(case_id: str) -> dict:
     st = _state(case_id)
     d = store.last(case_id, "decision")
     ev = st["evidence"]
-    facts = _all_facts(st) if (st["form"] and ev) else []
-    facts += derive(facts)  # estimates shown with their working (Decide re-derives the same ones)
-    return {
+    raw = _all_facts(st) if (st["form"] and ev) else []
+    facts = raw + derive(raw)  # estimates shown with their working (Decide re-derives the same ones)
+    out = {
         "case_id": case_id,
         "prompt": store.events(case_id)[0]["payload"]["text"],
         "form": st["form"].model_dump(mode="json") if st["form"] else None,
@@ -211,7 +236,19 @@ def view(case_id: str) -> dict:
         "reader": (store.last(case_id, "reader") or {}).get("reader"),
         "duplicate_of": _duplicate_of(case_id, d),
         "events": [{"seq": e["seq"], "kind": e["kind"], "at": e["at"]} for e in store.events(case_id)],
+        "next_stage": next_stage(case_id),
+        # line by line, base to premium; None unless priced (and it must reconcile with the decision)
+        "breakdown": breakdown(raw) if d and d.get("premium_inr") is not None else None,
     }
+    out["risk_map"] = insights.build(out) if d else []
+    return out
+
+
+def risk_map_words(case_id: str) -> dict:
+    """Headline + summary per circle. An LLM may write them (cached); colours never come from it."""
+    v = view(case_id)
+    words, who = insights.narrate(v["risk_map"], (v["decision"] or {}).get("outcome"))
+    return {"words": words, "writer": who}
 
 
 def _duplicate_of(case_id: str, d: Optional[dict]) -> Optional[str]:
