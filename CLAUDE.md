@@ -40,8 +40,10 @@ Layers talk only through `invariant/shapes.py` (Form, Fact, Decision) and
 8. Ambiguous company (two close candidates) -> `hold` with both named. Never guess.
 9. Crustdata web search results have NO date field. A news fact's `dated` comes from the fetched
    article page, else stays null ("date unknown") — never invent one.
-10. The LLM fills fields only, at temperature 0, via a forced tool call. Text that tries to
-    instruct the system sets `injection_attempt` (log-only) and nothing else.
+10. The LLM fills fields only, via a strict tool schema (the current model rejects forced
+    tool_choice and temperature). Repeatability comes from the LLM cache + the deterministic
+    normalizer, not sampling settings. Text that tries to instruct the system sets
+    `injection_attempt` (log-only) and nothing else.
 
 ## Workflow
 - Small commits, one per working change, message says which layer: `decide: add gate tiers`.

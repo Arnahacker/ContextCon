@@ -1,0 +1,34 @@
+[
+ {
+  "style": "polite",
+  "prompt": "Good morning, and thank you for your help! Could you kindly look at a proposal for me? Kanpur Hide Exports Pvt Ltd, a leather exporter, is applying for cover. They tell us they have 120 employees working across three units. Would you please check this against public data and let me know what does not match? Many thanks."
+ },
+ {
+  "style": "rude",
+  "prompt": "Kanpur Hide Exports Pvt Ltd. Leather exporter. Claims 120 employees, 3 units. Check it against public data and tell me what's off. Don't waste my time."
+ },
+ {
+  "style": "short",
+  "prompt": "kanpur hide exports pvt ltd - leather exporter - 120 staff, 3 units. verify vs public data."
+ },
+ {
+  "style": "long",
+  "prompt": "I have a new submission that came in this morning through one of our regional partners, and I would like a second pair of eyes on it before we go any further. The applicant is Kanpur Hide Exports Pvt Ltd. They describe themselves as a leather exporter - their business is exporting leather. In the proposal they state that they employ 120 people in total and that the work is spread across three units. We have not yet asked them about the type of cover or the amount. Before we do, please check what they have declared against whatever public data is available and tell me clearly which parts do not match, so that I know what to raise with them."
+ },
+ {
+  "style": "hinglish",
+  "prompt": "Ek leather exporter hai, Kanpur Hide Exports Pvt Ltd. Unke 120 employees hai, teen units me. Public data se check karke batao kya match nahi kar raha."
+ },
+ {
+  "style": "typos",
+  "prompt": "a lether exporter, Kanpur Hide Exports Pvt Ltd, aplying for cover sayz it has 120 employes acros three unitz. chek it againts publc data n tell me wat dosnt match"
+ },
+ {
+  "style": "numbers_in_words",
+  "prompt": "A leather exporter called Kanpur Hide Exports Pvt Ltd is applying for cover; they declare one hundred twenty employees spread over three units. Please cross-check with public data and flag anything that does not match."
+ },
+ {
+  "style": "legal_name_variant",
+  "prompt": "M/s KANPUR HIDE EXPORTS PRIVATE LIMITED (leather exports) - 120 heads on payroll, 3 units. Compare against public records and list the mismatches."
+ }
+]
