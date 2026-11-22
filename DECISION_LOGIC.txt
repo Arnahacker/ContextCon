@@ -1,0 +1,318 @@
+=====================================================================
+  HOW INVARIANT DECIDES: QUOTE, REFER, DECLINE OR HOLD
+  (rules version 2026.11.22.5 - matches the code in invariant/decide/)
+=====================================================================
+
+THE ONE-LINE VERSION
+--------------------
+The AI only READS the request into a form. Fixed Python rules DECIDE.
+Same facts in -> same decision, same price, same hash out. The wording
+never reaches the decision step, so "please", "bhai", typos or "ignore your
+instructions" cannot change the outcome.
+
+
+=====================================================================
+1. THE FOUR STEPS
+=====================================================================
+
+  1. READ      Gemini (or Claude) fills a fixed form from the text:
+               company, city, industry, staff, sites, cover, sum insured.
+               It prices nothing and decides nothing.
+
+  2. CHECK     Crustdata is asked about the company (all listed on screen
+               under "What we checked", with credits and cache status):
+                 /company/identify  -> which company is it?
+                 /company/enrich    -> staff count, offices, line of business,
+                                       revenue estimate, news (one call)
+                 /job/search        -> job ads: hazardous work, extra cities
+                 /web/search/live   -> news search (only if enrich had no news)
+                 /web/enrich/live   -> opens counted articles to read their date
+                 OpenSanctions      -> only if a key is set (not set now)
+               The AI is also called to read each follow-up answer.
+               Every result becomes a FACT with a source you can click.
+               Each fact gets a STATUS (see section 3).
+
+               HOW NEWS IS USED. Every article is read and listed on screen
+               with a plain verdict:
+                 Counted - names this company AND reports a fire, accident,
+                           court case, strike, pollution or closure
+                 Counted - names this company AND says it has a plant /
+                           factory / unit in a city nobody declared
+                           (becomes an "undeclared site")
+                 Read    - about this company, nothing adverse
+                 Ignored - does not clearly name this company (e.g. "Fire
+                           at Agra shoe market" for Agra Footwear Works)
+
+  3. GATE      Is there enough information to price? (section 2)
+               If not -> HOLD and ask the broker.
+
+  4. DECIDE    Apply the rules (section 4) -> outcome (section 5)
+               -> premium (section 6).
+
+
+=====================================================================
+2. THE GATE: WHEN IT REFUSES TO PRICE (HOLD)
+=====================================================================
+
+No price until these are known (from the applicant, the record, or an
+estimate):
+
+  Tier 0  Which company     - if two or more close matches: HOLD, ask which
+                              one, naming them. It NEVER guesses. Up to 6
+                              candidates, most relevant first (Indian, size,
+                              has a website). If the name gives a messy list,
+                              the brand alone is searched too ("Shoe Bata" ->
+                              "Bata" -> Bata India Limited). You can also type
+                              the website if none fit.
+  Tier 1  Occupancy (trade) - record usually has it
+          Headcount         - record usually has it (a lower bound)
+          Number of sites   - record or the applicant
+          Cover type        - only the applicant. Asked only when the
+                              prompt does not say it. Options:
+                                fire      property: building, machinery, stock
+                                          ("property insurance", Sookshma,
+                                           Laghu Udyam all mean fire)
+                                wc        workmen's compensation
+                                fire_wc   both
+                                marine    goods in transit -> asks value
+                                          shipped + route (domestic /
+                                          international); no sum insured
+                                liability third-party claims -> asks the
+                                          limit of cover + turnover
+          Sum insured       - only the applicant (always asked first)
+
+  Tier 2  Claims history, wages, construction... never block; they are
+          priced questions or loadings.
+
+HOLD reasons you can see:
+  ambiguous_company      several companies match - pick one
+  company_not_found      give the website or city
+  awaiting_answers       a Tier 1 field is missing - the question is shown
+  evidence_unavailable   a Crustdata call failed. Silence is NEVER treated
+                         as "nothing bad found", so it waits for a human.
+
+"DON'T KNOW" NEVER DEAD-ENDS
+  Sum insured unknown  -> asks owned or rented (only what unblocks pricing)
+                       -> building:  rented = Rs 0
+                                     owned + area = area x cost per sq ft
+                                     area unknown = headcount x 60-150 sq ft
+                                     ownership unknown = Rs 0 up to that
+                       -> machinery: headcount x lakh-per-worker norm
+                       -> stock:     monthly sales x weeks of stock / 4.3
+                                     (sales from the applicant, else Crustdata
+                                      revenue / 12 if its band is within 5x,
+                                      else headcount x sales-per-worker norm)
+                       -> sum insured = building + machinery + stock
+  Cover type unknown   -> fire (property) cover is priced
+  Headcount / sites / trade unknown AND not in the record
+                       -> estimated (sites x 20-200 workers; 1 site; "other")
+
+  All estimates show "(estimate)" in the gap table - click for the working.
+  The norms are ILLUSTRATIVE placeholders, labelled on screen.
+
+
+=====================================================================
+3. FACT STATUSES (the coloured tags in the gap table)
+=====================================================================
+
+  matches                 record agrees with what the applicant said
+  contradicts             record disagrees (e.g. headcount far higher,
+                          a different trade)
+  undeclared              record shows something the applicant did not
+                          mention (extra site, hazardous job, fire news)
+  consistent_unconfirmed  nothing contradicts it, nothing confirms it
+                          (e.g. the applicant's own answers, estimates)
+  cannot_verify           unknown ("don't know")
+
+Two safety rules:
+  * HEADCOUNT IS ONE-DIRECTIONAL. LinkedIn-style counts miss factory workers,
+    so a record ABOVE the declared figure by more than 25% contradicts;
+    a record BELOW it is never held against the applicant.
+  * NEWS MUST NAME THIS COMPANY (name + city, or domain). A fire at a
+    similarly named firm never counts.
+
+
+=====================================================================
+4. THE RULES (shown in "WHY: RULES APPLIED")
+=====================================================================
+
+On screen ("Why this decision") each rule is shown in plain words: a title
+(e.g. "Staff count understated"), a sentence with the actual values
+("The applicant said 120 people; public records show at least 310"), its
+price effect ("+35% price") and whether it "sends it to a person". The
+values are clickable for their source. The internal rule names are below.
+
+  RULE                     WHEN IT FIRES                          x PRICE  OUTCOME
+  ---------------------------------------------------------------------------------
+  CONFIRMED_FIRE           fire/explosion at THIS company in        -      DECLINE
+                           the last 24 months
+  SANCTIONS_MATCH          sanctions list hit (only with key)       -      DECLINE
+  HEADCOUNT_UNDERSTATED    record headcount > declared x 1.25     x1.35    REFER
+  UNDECLARED_SITE          a site/city the applicant did not      x1.10    REFER
+                           mention (one row per site; only the
+                           first 3 load the price)
+  UNDECLARED_HAZARD        hazardous job ads (boiler, dyeing,     x1.25    REFER
+                           tanning...) not declared
+  ADVERSE_EVENT            other confirmed bad news (older fire,  x1.30    REFER
+                           court, strike, pollution...)
+  OCCUPANCY_MISMATCH       record says a different trade          dearer   REFER
+                           (priced at the dearer of the two       rate /
+                           fire rates)                            declared
+  UNDISCLOSED_ESSENTIAL    applicant said "don't know" to         x1.25    REFER
+                           something only they know (building
+                           owned/area, sum-insured band, or
+                           trade/headcount/sites with no record)
+  DISCLOSED_HAZARD         hazardous work the applicant           x1.25    (none)
+                           confirmed when asked
+  (unanswered / "no" / "don't know" on the record checks keeps the
+   UNDECLARED_* rules above, so the case is referred)
+  CLAIMS_HISTORY_UNKNOWN   "don't know" on claims in 5 years      x1.15    (none)
+  DERIVED_VALUE            a Tier 1 value is an estimate/range    x1.05    (none)
+  UNKNOWN_<FIELD>          a fallback ladder ran out              x1.15    (none)
+
+All multipliers multiply together, e.g. x1.35 x 1.10 x 1.25 = x1.86.
+
+
+=====================================================================
+5. HOW THE OUTCOME IS CHOSEN
+=====================================================================
+
+Checked in this order - the first that applies wins:
+
+  1. HOLD      company ambiguous / not found / a Crustdata call failed /
+               a Tier 1 field still missing
+  2. DECLINE   any DECLINE rule fired (CONFIRMED_FIRE, SANCTIONS_MATCH)
+  3. REFER     any REFER rule fired (see the table): a human underwriter
+               should look - the price is shown, with the loadings
+  4. QUOTE     none of the above: priced, no red flags
+
+  QUOTE does not mean "no loadings": CLAIMS_HISTORY_UNKNOWN or
+  DERIVED_VALUE can raise a quote's price without sending it to refer.
+
+
+=====================================================================
+6. HOW THE PREMIUM IS CALCULATED
+=====================================================================
+
+  MARINE    = value shipped x 110% x marine rate x route factor
+              rates (% of insured value): footwear/garments/textiles/brass
+              0.20, leather/engineering 0.25, other 0.30, food 0.35,
+              chemicals 0.50. Route: domestic x1.0, international x1.5
+  LIABILITY = limit of cover x rate on limit x turnover factor
+              rates: garments 0.8%, footwear/textiles/brass 1.0%, food/
+              engineering/other 1.2%, leather 1.5%, chemicals 2.5%.
+              Turnover: up to 10 Cr x1.0, up to 100 Cr x1.25, more x1.6
+  "Don't know" on value shipped / route / limit -> cautious estimate
+  (yearly sales / international / Rs 1 Cr) + UNDISCLOSED_ESSENTIAL penalty.
+
+  Fire part = sum insured x (fire rate for the trade + 0.15 STFI) / 1000
+  WC part   = annual wages x WC rate for the trade / 100
+              (wages unknown -> headcount x 12 x Rs 12,000-18,000/month)
+  Net       = (fire part + WC part) x all rule multipliers
+              never below the Rs 10,000 minimum premium
+  Premium   = net + 18% GST
+
+  Fire rates (per Rs 1,000 insured, ILLUSTRATIVE rate card):
+    engineering 0.60  food 0.70  brassware 0.75  garments 0.80
+    footwear 0.90  textiles 1.00  other 1.00  leather 1.20  chemicals 1.65
+  WC rates (per Rs 100 of wages): garments 2.5, footwear/textiles/food 3.0,
+    brassware/other 3.5, leather 4.0, engineering 5.0, chemicals 6.0
+
+  A range (estimate) is priced at its low, middle and high -> "range" shown.
+
+  WORKED EXAMPLE ("Clean" demo: Agra Footwear Works, fire, Rs 3 crore):
+    3,00,00,000 x (0.90 + 0.15) / 1000 = Rs 31,500
+    no rules fired                      x 1.00
+    + 18% GST                           = Rs 37,170   <- what the screen shows
+
+
+=====================================================================
+7. THE OTHER PANELS
+=====================================================================
+
+ASK THE BROKER
+  ONE question at a time; the rest are listed under "Coming up".
+
+  ASK BEFORE REFERRING. Before a record finding counts against the
+  applicant, they are shown it and asked:
+    "Public records show the business also at Unnao, Chennai. Are these
+     part of the business?"              yes -> disclosed, no referral
+    "Job ads show tanning. Does the business do it?"
+                                         yes -> priced (+25%), no referral
+    "You said 120 staff; records show at least 310. Which is right?"
+                                         record -> corrected, no loading
+  Answering "no" or "don't know" keeps the finding: it is then referred,
+  and the decision says why. These checks are never cut off by the
+  5-question limit because they can change the outcome.
+
+  Questions that block pricing come first, are ALWAYS shown and are
+  marked "needed to price" (no rupee value yet: there is no price to
+  compare against until they are answered).
+  Optional questions show their rupee value ("worth Rs X" = how much the
+  answer could move the premium) and appear only if worth >= Rs 5,000,
+  up to 5 answers. Claims history is always offered.
+  Each answer is echoed back ("I read that as ...") for Yes / Edit.
+
+WHAT WOULD CHANGE MY MIND
+  Appears whenever a record finding refers, declines or raises the price.
+  Each line: "If <this finding were not true> -> <outcome> at <price>
+  (<Rs X> cheaper)" - so even a finding that does not change REFER shows
+  what it costs.
+  "Flip it" re-runs the SAME rules with that finding cleared (and, when
+  it says "with the other N findings also cleared", those too) and shows
+  the result in the side panel. It is a what-if: nothing is saved - the
+  real decision only changes if the evidence or the answers change.
+  QUOTE shows nothing here because nothing is holding the price up.
+
+FINDINGS
+  Notes that do NOT change the price or the hash:
+    injection_attempt     the text tried to instruct the system (ignored)
+    evidence_unavailable  which Crustdata call failed
+    underinsurance        declared sum insured < half of the record-based
+                          floor (machinery + stock, building not counted)
+    shrinking             staff fell 25%+ in a year (Crustdata headcount
+                          history from the same enrich call)
+    corrected             applicant accepted the record's staff figure
+  A prompt injection also shows as a red banner above the decision.
+
+SOURCES ON SCREEN
+  Every value carries a small tag saying where it came from: "from the
+  request", "broker's answer", "our estimate", or the exact Crustdata
+  endpoint (e.g. "Crustdata /company/enrich"). Click it for the field,
+  link, record date and fetch time. "What we checked" lists every call.
+  "None." simply means none of these happened.
+
+THE HASH
+  A fingerprint of: resolved company id + every confirmed fact + rules
+  version. Never the wording. Same facts -> same hash; that is what the
+  Invariance tab checks with 8 rewrites of one request.
+
+
+=====================================================================
+8. WHAT HAPPENED IN YOUR NIKE TEST (and what changed)
+=====================================================================
+
+  Before: Crustdata returned 10 equally-confident "Nike" records. The
+  matcher wrongly preferred a 2-10 person "Retail Apparel" page with no
+  website (it counted "apparel" as a manufacturing fit) - so the record
+  said headcount 1, and the "garments vs footwear" contradiction had no
+  rule. Nothing fired -> QUOTE, empty "Why", nothing to flip, no findings.
+
+  Now: retail pages never count as a maker, so the case HOLDS and asks
+  "Nike (nike.com) or NIKE (nikemedics.it)?". Picking nike.com brings
+  106,692 staff, real office cities and news. A trade contradiction now
+  fires OCCUPANCY_MISMATCH (refer). "Remote" job ads are no longer sites.
+
+  Note: your Nike prompt asked for MARINE cover. This desk has rate cards
+  only for fire and workmen's compensation (marine and liability were
+  "stretch" in the spec). Marine and liability are now priced too: marine
+  asks the value shipped and the route, liability asks the limit of cover
+  and turnover, then both are priced on illustrative rates (section 6).
+
+
+=====================================================================
+9. WHAT IS ILLUSTRATIVE (not real-world figures)
+=====================================================================
+  Rate card, loadings, industry norms (stock weeks, machinery and sales
+  per worker, sq ft per worker, workers per site), USD->INR rate (88).
+  They are placeholders to demo the method - tune before quoting anyone.
