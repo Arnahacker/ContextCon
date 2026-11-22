@@ -55,7 +55,10 @@ def index():
 def create(body: NewCase):
     if not body.prompt.strip():
         raise HTTPException(400, "empty prompt")
-    return service.view(service.run_case(body.prompt))
+    try:
+        return service.view(service.run_case(body.prompt))
+    except LookupError as exc:  # no LLM key / fixture and no fallback could read it
+        raise HTTPException(422, f"Could not read this prompt: {exc}") from exc
 
 
 @app.get("/api/cases")

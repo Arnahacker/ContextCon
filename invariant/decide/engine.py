@@ -182,7 +182,7 @@ def _resolution_hold(inp: DecideInput, base: dict) -> Optional[Decision]:
 def decide(inp: DecideInput) -> Decision:
     raw = list(inp.facts)
     a = assess(raw)
-    base = dict(hash=decision_hash(inp.resolution.company_id, a.facts, RULES_VERSION),
+    base = dict(hash=decision_hash(inp.resolution.company_id, a.facts, RULES_VERSION, inp.unavailable),
                 rules_version=RULES_VERSION, findings=_findings(inp))
 
     if hold := _resolution_hold(inp, base):

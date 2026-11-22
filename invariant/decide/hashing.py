@@ -18,11 +18,15 @@ def _fact_key(f: Fact) -> dict:
     return d
 
 
-def decision_hash(company_id: Optional[str], facts: Iterable[Fact], rules_version: str) -> str:
+def decision_hash(company_id: Optional[str], facts: Iterable[Fact], rules_version: str,
+                  unavailable: Iterable[str] = ()) -> str:
     payload = {
         "company_id": company_id,
         "facts": sorted((_fact_key(f) for f in facts), key=lambda d: d["id"]),
         "rules_version": rules_version,
     }
+    unavailable = sorted(set(unavailable))
+    if unavailable:  # a held case must never share a hash with the case it would have been
+        payload["unavailable"] = unavailable
     blob = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
