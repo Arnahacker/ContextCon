@@ -9,7 +9,7 @@ from pathlib import Path
 from invariant.case import service
 
 ROOT = Path(__file__).resolve().parents[2]
-CASES = json.loads((ROOT / "tests/cases/cases.json").read_text())["cases"]
+CASES = json.loads((ROOT / "tests/cases/cases.json").read_text(encoding="utf-8"))["cases"]
 REWRITES_FILE = ROOT / "tests/rewrites/hero_rewrites.json"
 
 
@@ -81,7 +81,7 @@ def run_all() -> list[dict]:
 
 
 def run_rewrites() -> list[dict]:
-    rewrites = json.loads(REWRITES_FILE.read_text())
+    rewrites = json.loads(REWRITES_FILE.read_text(encoding="utf-8"))
     items = rewrites if isinstance(rewrites, list) else rewrites.get("rewrites", [])
     out = []
     for r in items:

@@ -65,7 +65,7 @@ def request_hash(prompt_version: str, text: str) -> str:
 
 def _index() -> dict:
     p = FIXTURES / "index.json"
-    return json.loads(p.read_text()) if p.exists() else {}
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
 
 
 def _db() -> sqlite3.Connection:
@@ -76,15 +76,17 @@ def _db() -> sqlite3.Connection:
 
 
 def call_tool(*, kind: str, index_key: str, prompt_version: str, system: str, tool: dict,
-              user_text: str) -> dict[str, Any]:
-    """Return the raw structured output for one request. `kind` + `index_key` address index.json."""
+              user_text: str, save_fixture: bool = True) -> dict[str, Any]:
+    """Return the raw structured output for one request. `kind` + `index_key` address index.json.
+    save_fixture=False keeps a live answer in the local cache only (for per-case screen text that
+    should not pile up in fixtures/)."""
     global last_source, last_provider
     key = request_hash(prompt_version, user_text)
     fixture = FIXTURES / f"{key}.json"
     if offline():
         last_source = last_provider = "fixture"
         if fixture.exists():
-            return json.loads(fixture.read_text())
+            return json.loads(fixture.read_text(encoding="utf-8"))
         idx = _index().get(kind, {})
         if index_key in idx:
             return idx[index_key]
@@ -111,8 +113,10 @@ def call_tool(*, kind: str, index_key: str, prompt_version: str, system: str, to
         last_source = last_provider = provider
         with _db() as con:
             con.execute("INSERT OR REPLACE INTO llm_cache VALUES (?, ?, ?)", (key, model, json.dumps(out)))
+        if not save_fixture:
+            return out
         FIXTURES.mkdir(parents=True, exist_ok=True)
-        fixture.write_text(json.dumps(out, indent=1, ensure_ascii=False))  # replayable offline
+        fixture.write_text(json.dumps(out, indent=1, ensure_ascii=False), encoding="utf-8")  # replayable offline
         return out
     raise LLMUnavailable(f"every LLM provider failed for {kind}: {'; '.join(errors)}")
 

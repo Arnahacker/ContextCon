@@ -240,13 +240,13 @@ class CrustdataClient:
     def _fixture(self, endpoint: str, body: Any, h: str) -> Any:
         by_hash = self.fixtures_dir / endpoint_slug(endpoint) / f"{h}.json"
         if by_hash.exists():
-            return json.loads(by_hash.read_text())
+            return json.loads(by_hash.read_text(encoding="utf-8"))
         index = self.fixtures_dir / "index.json"
         if index.exists():
             want = _loose(body)
-            for e in json.loads(index.read_text()).get("entries", []):
+            for e in json.loads(index.read_text(encoding="utf-8")).get("entries", []):
                 if e["endpoint"] == endpoint and _loose(e["body"]) == want:
-                    return json.loads((self.fixtures_dir / e["response"]).read_text())
+                    return json.loads((self.fixtures_dir / e["response"]).read_text(encoding="utf-8"))
         return None
 
     def _throttle(self, endpoint: str) -> None:
