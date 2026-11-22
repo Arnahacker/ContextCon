@@ -26,6 +26,12 @@ COMPONENTS = [
     "building_owned", "building_area_sqft", "roof_type", "building_value",
     "machinery_value", "monthly_sales", "stock_weeks", "stock_value",
     "pf_monthly", "adverse_event", "hazardous_activity", "sanctions",
+    # record-only context (shown, never asked)
+    "headcount_trend", "year_founded",
+    # marine and liability lines
+    "cargo_value", "marine_route", "liability_limit",
+    # applicant's answer when shown a record finding (yes / no / unknown)
+    "confirm_sites", "confirm_hazard", "confirm_headcount",
 ]
 ALL_FIELDS = TIER0 + TIER1 + TIER2 + COMPONENTS
 
@@ -77,9 +83,19 @@ class CallRecord(_M):
     error: Optional[str] = None
 
 
+class NewsItem(_M):
+    """One article we read, and what we concluded from it (shown on screen; not hashed)."""
+    title: str
+    url: Optional[str] = None
+    date: Optional[str] = None
+    via: str  # "company news (Crustdata)" | "web search (Crustdata)"
+    verdict: str  # plain words: counted as ... / read, nothing adverse / ignored because ...
+
+
 class EvidenceResult(_M):
     resolution: Resolution
     facts: list[Fact] = Field(default_factory=list)
+    news_checked: list[NewsItem] = Field(default_factory=list)
     # evidence sources that failed (timeout, 5xx). Non-empty => decide must hold,
     # because silence is not "nothing bad found".
     unavailable: list[str] = Field(default_factory=list)

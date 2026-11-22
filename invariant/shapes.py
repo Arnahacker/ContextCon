@@ -111,6 +111,8 @@ class Flip(_Frozen):
     fact: str
     change: str  # human readable, e.g. "below 150"
     then: Outcome
+    also: list[str] = Field(default_factory=list)  # other facts that must be cleared with it for `then`
+    premium_inr: Optional[int] = None  # the premium in that case (None when it would not be priced)
 
 
 class Gate(_Frozen):
