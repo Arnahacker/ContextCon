@@ -193,7 +193,9 @@ def questions(raw: list[Fact], a: Assessment, optional: bool = True) -> list[Que
             needed = {s.field for s in st.pending if _unblocks(raw, a, s)} or {s.field for s in st.pending}
         for spec in st.pending:
             blocking = spec.field in needed
-            if not blocking and not optional:
+            # the cap stops optional questions, but never one we always offer (claims history has
+            # no public record; dropping it after it was shown as "coming up" looked like a bug)
+            if not blocking and not optional and spec.field not in ALWAYS_OFFER:
                 continue
             w = worth(raw, a, spec.field)
             if spec.field == "claims_history" and "CLAIMS_HISTORY_UNKNOWN" not in rule_names and a.premium:

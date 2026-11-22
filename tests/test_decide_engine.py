@@ -379,11 +379,21 @@ def test_wages_ladder_and_unknown_loading():
 def test_optional_questions_stop_after_five_but_blocking_ones_never_do():
     # a blocked gate always shows the question that unblocks it (no "need 1 answer" with nothing to answer)
     d = run(no_si_facts() + [followup("sum_insured", None)], questions_asked=5)
-    assert d.outcome == "hold" and [q.field for q in d.questions] == ["building_owned"]
-    # once priced, the optional (priced) questions stop after five answers
+    # the unblocking question first; past the cap only claims history (always offered) follows
+    assert d.outcome == "hold" and [q.field for q in d.questions] == ["building_owned", "claims_history"]
+    # once priced, the optional (priced) questions stop after five answers -- except claims
+    # history, which has no public record and was listed as "coming up": it is never dropped
     d2 = run(clean_facts(), questions_asked=5)
-    assert d2.outcome == "quote" and d2.questions == []
+    assert d2.outcome == "quote" and [q.field for q in d2.questions] == ["claims_history"]
     assert run(clean_facts()).questions  # claims history is offered below the cap
+
+
+def test_claims_history_survives_the_cap_until_answered():
+    # the hero case asks 4 blocking + 3 confirmation questions: claims history must still come
+    d = run(hero_facts() + HERO_ANSWERS, questions_asked=9)
+    assert "claims_history" in [q.field for q in d.questions]
+    d2 = run(hero_facts() + HERO_ANSWERS + [followup("claims_history", "no")], questions_asked=10)
+    assert "claims_history" not in [q.field for q in d2.questions]
 
 
 def test_cheap_questions_are_dropped_but_blocking_ones_kept():
