@@ -36,8 +36,22 @@ OCCUPANCY_KEYWORDS = [
     ("food_processing", ["food", "dairy", "beverage", "bakery"]),
     ("chemicals", ["chemical", "pharmaceutical", "plastics", "paint"]),
     ("engineering", ["engineering", "machinery", "automotive", "metal", "industrial automation"]),
-    ("brassware", ["brass"]),
+    ("brassware", ["brass", "brassware"]),
+    # last, so a manufacturer that also ships or sells online keeps its trade
+    ("warehousing", ["warehouse", "warehousing", "logistics", "courier", "freight", "supply chain",
+                     "fulfilment", "fulfillment", "cold storage"]),
+    ("retail", ["retail", "e-commerce", "ecommerce", "online marketplace", "marketplace", "supermarket",
+                "hypermarket", "online shopping"]),
+    ("office", ["software development", "it services", "information technology", "internet",
+                "technology, information", "saas", "bpo", "consulting", "financial services"]),
 ]
+
+
+def _kw(word: str, text: str) -> bool:
+    """Whole-word match, plural allowed: 'metal' finds 'metals' but not 'metallic'."""
+    return re.search(r"\b" + re.escape(word) + r"(?:s|es)?\b", text) is not None
+
+
 COMPANY_SUFFIXES = {"pvt", "private", "ltd", "limited", "co", "company", "inc", "llp", "corp", "corporation"}
 INDIAN_STATES = {
     "andhra pradesh", "arunachal pradesh", "assam", "bihar", "chhattisgarh", "goa", "gujarat", "haryana",
@@ -119,7 +133,7 @@ def occupancy_of(industry: Optional[str], company_name: Optional[str]) -> Option
     if "handicraft" in t:
         return "brassware" if "brass" in (company_name or "").lower() else "other"
     for occ, words in OCCUPANCY_KEYWORDS:
-        if any(w in t for w in words):
+        if any(_kw(w, t) for w in words):
             return occ
     return "other"
 
@@ -129,7 +143,7 @@ def occupancy_hints(texts: Iterable[Optional[str]], company_name: Optional[str])
     out: list[str] = []
     for t in texts:
         low = (t or "").lower()
-        hits = [occ for occ, words in OCCUPANCY_KEYWORDS if any(w in low for w in words)]
+        hits = [occ for occ, words in OCCUPANCY_KEYWORDS if any(_kw(w, low) for w in words)]
         if "handicraft" in low and "brass" in (company_name or "").lower():
             hits.insert(0, "brassware")
         out += [h for h in hits if h not in out]
