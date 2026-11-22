@@ -1,9 +1,11 @@
-"""Company watcher for the demo companies (offline only).
+"""Company watcher for the demo companies.
 
 A watch takes the company's record as a baseline, then each check reports what
 changed on record since. Offline, the changes come from a fixed script in
-fixtures/crustdata/watch/events.json, so the demo repeats exactly. Every change
-becomes a Fact with its Crustdata source; there is no live watcher yet.
+fixtures/crustdata/watch/events.json, so the demo repeats exactly. Live, the same
+companies can be watched but no change is ever reported: live re-checks against
+Crustdata are not built yet, and a change is never invented. Every change becomes
+a Fact with its Crustdata source.
 """
 from __future__ import annotations
 
@@ -38,8 +40,6 @@ def _now() -> str:
 
 
 def _require(company_id: str) -> dict[str, Any]:
-    if not offline():
-        raise WatchUnavailable("The watcher runs on the demo companies only. Start the app in offline mode to use it.")
     entry = _script().get(str(company_id))
     if entry is None:
         raise WatchUnavailable(f"Company {company_id} is not one of the demo companies.")
@@ -65,9 +65,7 @@ def baseline(company_id: str) -> dict[str, Any]:
 
 
 def watchable() -> list[dict[str, Any]]:
-    """The demo companies that can be watched (empty when not offline)."""
-    if not offline():
-        return []
+    """The demo companies that can be watched."""
     return [baseline(cid) for cid in sorted(_script())]
 
 
@@ -89,11 +87,12 @@ def check(company_id: str, n: int) -> dict[str, Any]:
     """Check number n (0-based) since the watch started: what changed on record."""
     entry = _require(company_id)
     fetched = _now()
-    script = entry["checks"]
+    script = entry["checks"] if offline() else []  # live: no scripted changes, and no change is invented
     changes = script[n] if n < len(script) else []
     out = []
     for i, ch in enumerate(changes):
         f = _fact(company_id, n, i, ch, fetched)  # refuses to exist without a source
         out.append({"field": ch["field"], "before": ch["before"], "after": ch["after"], "text": ch["text"],
                     "fact": f.model_dump(mode="json")})
-    return {"company_id": str(company_id), "checked": fetched, "changes": out}
+    return {"company_id": str(company_id), "checked": fetched, "changes": out,
+            "mode": "offline" if offline() else "live"}

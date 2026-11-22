@@ -18,12 +18,17 @@ def test_only_demo_companies_are_watchable():
         watcher.start("4889")
 
 
-def test_watcher_refuses_outside_offline_mode(monkeypatch):
+def test_live_mode_lists_and_watches_but_never_invents_a_change(monkeypatch):
     monkeypatch.delenv("INVARIANT_OFFLINE", raising=False)
     monkeypatch.delenv("INVARIANT_EVIDENCE_OFFLINE", raising=False)
-    assert watch.watchable() == []
+    o = watcher.overview()
+    assert o["available"] and o["mode"] == "live" and len(o["companies"]) == 7
+    watcher.start("700102")
+    for _ in range(3):  # offline, the 2nd check of Agra shows changes; live never does
+        last = watcher.check_now("700102")["checks"][-1]
+        assert last["changes"] == [] and last["mode"] == "live"
     with pytest.raises(watch.WatchUnavailable):
-        watcher.start("700102")
+        watcher.start("4889")  # still demo companies only
 
 
 def test_agra_checks_follow_the_script_and_every_change_is_sourced():

@@ -211,7 +211,7 @@ function watchCard(c){const w=c.watch;
       return `<li class="chg"><span class="when">${esc(when(k.checked))}</span><span class="what"><span><span class="badge b-warn">${esc(WFIELD[ch.field]||fname(ch.field))}</span> ${esc(ch.text)}</span>
       <span class="small">${ch.before==null?`New: <b>${esc(wval(ch.after))}</b>`:`Was <b>${esc(wval(ch.before))}</b> → now <b>${esc(wval(ch.after))}</b>`}</span>
       <span class="src">Source: ${esc(s.what||'')} · “${esc(s.quote||'')}”${s.dated?` · dated ${esc(s.dated)}`:' · date unknown'}${s.url?` · <a href="${esc(s.url)}" target="_blank" rel="noopener">article</a>`:''}</span></span></li>`}).join('')
-    :`<li><span class="when">${esc(when(k.checked))}</span><span class="what">No change on record since the last check.</span></li>`).join('');
+    :`<li><span class="when">${esc(when(k.checked))}</span><span class="what">${k.mode==='live'?'No new change reported for this company since the watch started.':'No change on record since the last check.'}</span></li>`).join('');
   return `<div class="wc">${head}${meta}<ul class="wlog">${items||'<li><span class="what">Watching. Press <b>Check now</b> to re-check the record.</span></li>'}</ul></div>`}
 async function pageWatch(){
   $('#app').innerHTML=`<div class="page"><div class="case-head"><div><div class="eyebrow">Monitoring</div><h1>Watcher</h1><div class="meta">Watch a company and we re-check its public record. Each change shows what it was, what it is now, and where it came from.</div></div>
@@ -220,7 +220,7 @@ async function pageWatch(){
   $('#wRefresh').onclick=()=>drawWatch();
   $('#watchList').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
     try{if(b.dataset.wstart){await api('/api/watcher/'+b.dataset.wstart,{});toast('Watching. Today\'s record is saved as the starting point.')}
-      else if(b.dataset.wcheck){const w=await api(`/api/watcher/${b.dataset.wcheck}/check`,{});const n=w.checks[w.checks.length-1].changes.length;toast(n?`${n} change${n>1?'s':''} found on record`:'No change on record')}
+      else if(b.dataset.wcheck){const w=await api(`/api/watcher/${b.dataset.wcheck}/check`,{});const n=w.checks[w.checks.length-1].changes.length;toast(n?`${n} change${n>1?'s':''} found on record`:(w.checks[w.checks.length-1].mode==='live'?'No new change reported':'No change on record'))}
       else if(b.dataset.wstop){await send('DELETE','/api/watcher/'+b.dataset.wstop);toast('Stopped watching')}
       else return;
       drawWatch()}catch(err){toast(err.message)}});

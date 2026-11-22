@@ -34,7 +34,7 @@ def overview() -> dict[str, Any]:
     with _db() as c:
         rows = {r[0]: _row(r) for r in c.execute("SELECT company_id, started, baseline, checks FROM watches")}
     companies = [{**b, "watch": rows.get(b["company_id"])} for b in watch.watchable()]
-    return {"available": watch.offline(), "companies": companies}
+    return {"available": True, "mode": "offline" if watch.offline() else "live", "companies": companies}
 
 
 def start(company_id: str) -> dict[str, Any]:
