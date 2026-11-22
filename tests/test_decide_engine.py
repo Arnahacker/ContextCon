@@ -82,7 +82,7 @@ def test_hero_before_answers_holds_for_cover_and_sum_insured():
     # verification still ran: the gap rules are visible while blocked
     assert {"HEADCOUNT_UNDERSTATED", "UNDECLARED_SITE", "UNDECLARED_HAZARD"} <= set(rules_of(d))
     assert [q.field for q in d.questions][:2] == ["cover_type", "sum_insured"]
-    assert d.questions[0].options == ["fire", "wc", "fire_wc"]
+    assert d.questions[0].options == ["fire", "wc", "fire_wc", "marine", "liability"]
 
 
 def test_hero_after_answers_refers_with_flip_on_headcount():
@@ -251,13 +251,16 @@ def no_si_facts():
 COMPONENTS = ["building_owned", "building_area_sqft", "roof_type", "monthly_sales", "stock_weeks", "machinery_value"]
 
 
-def test_sum_insured_unknown_drops_to_component_questions():
+def test_sum_insured_unknown_asks_only_what_unblocks_pricing():
+    # machinery and stock come from the record headcount; only the building needs the applicant,
+    # so the one blocking question is owned-or-rented (no list of six)
     d = run(no_si_facts() + [followup("sum_insured", None)])
     assert d.outcome == "hold" and d.gate.missing == ["sum_insured"]
-    assert sorted(q.field for q in other_qs(d)) == sorted(COMPONENTS)
-    assert all(q.rung == 2 for q in other_qs(d))
-    roof = next(q for q in d.questions if q.field == "roof_type")
-    assert roof.options == ["concrete", "tin_sheet", "other"]
+    assert [(q.field, q.rung) for q in other_qs(d)] == [("building_owned", 2)]
+    # owned -> the area is what unblocks next (roof only narrows the range)
+    d2 = run(no_si_facts() + [followup("sum_insured", None), followup("building_owned", "owned")])
+    assert d2.gate.missing == ["sum_insured"]
+    assert [q.field for q in other_qs(d2)] == ["building_area_sqft"]
 
 
 def test_components_answered_give_derived_sum_insured():
@@ -291,17 +294,72 @@ def test_components_answered_give_derived_sum_insured():
     assert run(no_si_facts() + answers).hash == d.hash
 
 
-def test_rented_building_is_zero_and_everything_skipped_reaches_band():
-    answers = [followup("sum_insured", None), followup("building_owned", "rented"),
-               followup("building_area_sqft", None), followup("roof_type", None),
-               followup("monthly_sales", None), followup("stock_weeks", None), followup("machinery_value", None)]
+def test_rented_building_prices_from_record_estimates_without_more_questions():
+    # rented -> building Rs 0; machinery and stock estimated from the record headcount, so the
+    # case is priced right away; area and roof are worth nothing once rented and are not asked
+    answers = [followup("sum_insured", None), followup("building_owned", "rented")]
     d = run(no_si_facts() + answers)
-    assert d.outcome == "hold"
-    assert [(q.field, q.rung) for q in other_qs(d)] == [("sum_insured", 3)]
-    assert other_qs(d)[0].options == ["<1 Cr", "1-5 Cr", "5-25 Cr", "25+ Cr"]
+    assert d.outcome == "quote" and not d.gate.blocked and d.premium_inr
+    assert rules_of(d) == ["DERIVED_VALUE"]  # rented was disclosed: no undisclosed loading
+    assert not {"building_area_sqft", "roof_type", "sum_insured"} & {q.field for q in d.questions}
+    from invariant.decide.derive import derive
+    stock = {f.id: f for f in derive(no_si_facts() + answers)}["derived_stock_value"]
+    assert "sales per worker" in stock.source.quote  # estimated: no sales answer, no record revenue
+    # every remaining component skipped: still priced, still no penalty (all have record proxies)
+    more = [followup("monthly_sales", None), followup("stock_weeks", None), followup("machinery_value", None)]
+    d2 = run(no_si_facts() + answers + more)
+    assert d2.outcome == "quote" and rules_of(d2) == ["DERIVED_VALUE"]
+
+
+def test_unknown_building_is_estimated_with_undisclosed_loading_and_band_removes_it():
+    answers = [followup("sum_insured", None), followup("building_owned", None)]
+    d = run(no_si_facts() + answers)
+    assert not d.gate.blocked and d.outcome == "refer"
+    assert "UNDISCLOSED_ESSENTIAL" in rules_of(d)
+    step = next(s for s in d.steps if s.rule == "UNDISCLOSED_ESSENTIAL")
+    assert step.multiplier == 1.25 and step.because == ["followup_building_owned"]
+    from invariant.decide.derive import derive
+    bld = {f.id: f for f in derive(no_si_facts() + answers)}["derived_building_value"]
+    assert bld.derivation.range[0] == 0 and "ownership not known" in bld.source.quote
+    # the band question is offered to replace the estimate
+    band_q = [q for q in d.questions if q.field == "sum_insured"]
+    assert band_q and band_q[0].options == ["<1 Cr", "1-5 Cr", "5-25 Cr", "25+ Cr"]
     band = followup("sum_insured", {"low": 10_000_000, "high": 50_000_000}, id="followup_sum_insured_2")
     d2 = run(no_si_facts() + answers + [band])
-    assert d2.outcome == "quote" and "DERIVED_VALUE" in rules_of(d2)
+    assert "UNDISCLOSED_ESSENTIAL" not in rules_of(d2) and d2.outcome == "quote"
+    assert d2.premium_inr < d.premium_inr or "DERIVED_VALUE" in rules_of(d2)
+    # owned but area unknown: estimated from headcount, also undisclosed
+    d3 = run(no_si_facts() + [followup("sum_insured", None), followup("building_owned", "owned"),
+                              followup("building_area_sqft", None)])
+    assert not d3.gate.blocked and "UNDISCLOSED_ESSENTIAL" in rules_of(d3)
+
+
+def test_record_revenue_feeds_stock_only_when_the_band_is_tight():
+    from invariant.decide.derive import derive
+    answers = [followup("sum_insured", None), followup("building_owned", "rented")]
+    tight = ev("crustdata_turnover", "turnover", {"low": 120_000_000, "high": 240_000_000},
+               "consistent_unconfirmed", kind="proxy_range")
+    stock = {f.id: f for f in derive(no_si_facts() + answers + [tight])}["derived_stock_value"]
+    assert "crustdata_turnover" in stock.derivation.inputs and "turnover" in stock.source.quote
+    coarse = ev("crustdata_turnover", "turnover", {"low": 88_000_000_000, "high": 88_000_000_000_000},
+                "consistent_unconfirmed", kind="proxy_range")
+    stock2 = {f.id: f for f in derive(no_si_facts() + answers + [coarse])}["derived_stock_value"]
+    assert "crustdata_turnover" not in stock2.derivation.inputs and "sales per worker" in stock2.source.quote
+
+
+def test_essential_field_unknown_everywhere_never_dead_ends():
+    # cover type unknown -> fire priced by default (no penalty: not risk information)
+    facts = [f for f in clean_facts() if f.field != "cover_type"]
+    d = run(facts + [followup("cover_type", None)])
+    assert not d.gate.blocked and d.premium_inr and "UNDISCLOSED_ESSENTIAL" not in rules_of(d)
+    # headcount and sites unknown and no record: estimated, with the undisclosed loading
+    bare = [declared("occupancy", "footwear"), declared("cover_type", "fire"), declared("sum_insured", 30_000_000)]
+    d2 = run(bare)
+    assert d2.gate.missing == ["headcount", "sites"] and {q.field for q in d2.questions} >= {"headcount", "sites"}
+    d3 = run(bare + [followup("headcount", None), followup("sites", None)])
+    assert not d3.gate.blocked and d3.outcome == "refer"
+    step = next(s for s in d3.steps if s.rule == "UNDISCLOSED_ESSENTIAL")
+    assert step.because == ["followup_headcount", "followup_sites"]
 
 
 def test_wages_ladder_and_unknown_loading():
@@ -318,14 +376,21 @@ def test_wages_ladder_and_unknown_loading():
     assert "UNKNOWN_WAGES" in rules_of(d4) and d4.premium_inr > d.premium_inr
 
 
-def test_questions_stop_after_five():
+def test_optional_questions_stop_after_five_but_blocking_ones_never_do():
+    # a blocked gate always shows the question that unblocks it (no "need 1 answer" with nothing to answer)
     d = run(no_si_facts() + [followup("sum_insured", None)], questions_asked=5)
-    assert d.questions == [] and d.outcome == "hold"
+    assert d.outcome == "hold" and [q.field for q in d.questions] == ["building_owned"]
+    # once priced, the optional (priced) questions stop after five answers
+    d2 = run(clean_facts(), questions_asked=5)
+    assert d2.outcome == "quote" and d2.questions == []
+    assert run(clean_facts()).questions  # claims history is offered below the cap
 
 
 def test_cheap_questions_are_dropped_but_blocking_ones_kept():
     d = run(hero_facts())
-    assert all(q.worth_inr >= 5000 or q.field in ("cover_type", "sum_insured", "claims_history") for q in d.questions)
+    # confirmation questions ("records show X: is that right?") can change the outcome, so they are kept
+    assert all(q.worth_inr >= 5000 or q.field in ("cover_type", "sum_insured", "claims_history")
+               or q.field.startswith("confirm_") for q in d.questions)
 
 
 def test_decide_is_deterministic():
@@ -337,3 +402,114 @@ def test_claims_history_always_asked_but_loaded_only_when_unknown():
     d = run(clean_facts())
     q = [q for q in d.questions if q.field == "claims_history"]
     assert q and q[0].worth_inr > 0 and d.outcome == "quote" and rules_of(d) == []
+
+
+def test_underinsurance_is_flagged_without_changing_price_or_hash():
+    # spec example: a 310-person tannery declaring Rs 50 lakh
+    low = [followup("cover_type", "fire"), followup("sum_insured", 5_000_000)]
+    ok = [followup("cover_type", "fire"), followup("sum_insured", 500_000_000)]
+    d = run(hero_facts() + low)
+    assert any(f.startswith("underinsurance") for f in d.findings)
+    assert not any(f.startswith("underinsurance") for f in run(hero_facts() + ok).findings)
+    assert not any(f.startswith("underinsurance") for f in run(clean_facts()).findings)
+
+
+def test_occupancy_mismatch_refers_at_the_dearer_rate():
+    facts = [f for f in clean_facts() if f.id != "crustdata_occupancy"] + [
+        ev("crustdata_occupancy", "occupancy", "leather", "contradicts")]
+    d = run(facts)
+    assert d.outcome == "refer"
+    step = next(s for s in d.steps if s.rule == "OCCUPANCY_MISMATCH")
+    assert step.multiplier == round(1.20 / 0.90, 2)  # leather vs footwear fire rates
+    assert step.because == ["declared_occupancy", "crustdata_occupancy"]
+    assert d.premium_inr > run(clean_facts()).premium_inr
+    flip = next(f for f in d.would_flip_if if f.fact == "crustdata_occupancy")
+    assert flip.then == "quote"
+
+
+def test_combined_flip_names_every_fact_to_clear():
+    d = run(hero_facts() + HERO_ANSWERS)
+    combined = [f for f in d.would_flip_if if f.also]
+    assert combined, "hero has several findings that only flip together"
+    f = combined[0]
+    ids = {x.id for x in hero_facts()}
+    assert f.fact not in f.also and set(f.also) <= ids
+    # clearing the fact and everything in `also` really gives the promised outcome
+    cleared = {f.fact, *f.also}
+    alt = [x.model_copy(update={"status": "matches"}) if x.id in cleared else x for x in hero_facts() + HERO_ANSWERS]
+    assert run(alt).outcome == f.then
+
+
+def test_undeclared_site_loading_is_capped_but_every_site_is_listed():
+    sites = [ev(f"jobs_sites_{i}", "sites", {"city": f"City{i}"}, "undeclared") for i in range(1, 8)]
+    d = run(clean_facts() + sites)
+    steps = [s for s in d.steps if s.rule == "UNDECLARED_SITE"]
+    assert len(steps) == 7 and d.outcome == "refer"
+    assert [s.multiplier for s in steps].count(1.1) == 3 and [s.multiplier for s in steps].count(1.0) == 4
+
+
+def no_cover_facts():
+    return [f for f in clean_facts() if f.field not in ("cover_type", "sum_insured")]
+
+
+def test_marine_asks_its_own_questions_then_prices():
+    d = run(no_cover_facts() + [followup("cover_type", "marine")])
+    assert d.outcome == "hold" and d.gate.missing == ["cargo_value", "marine_route"]  # no sum insured asked
+    assert [q.field for q in d.questions][:2] == ["cargo_value", "marine_route"]
+    answers = [followup("cover_type", "marine"), followup("cargo_value", 20_000_000),
+               followup("marine_route", "international")]
+    d2 = run(no_cover_facts() + answers)
+    # 2 Cr x 110% x 0.20% (footwear) x 1.5 (international) = 66,000, + 18% GST
+    assert d2.outcome == "quote" and d2.premium_inr == round(20_000_000 * 1.10 * 0.0020 * 1.5 * 1.18)
+    big = [followup("cover_type", "marine"), followup("cargo_value", 500_000_000), followup("marine_route", "domestic")]
+    assert run(no_cover_facts() + big).premium_inr == round(500_000_000 * 1.10 * 0.0020 * 1.18)
+
+
+def test_marine_dont_know_is_estimated_with_the_penalty():
+    answers = [followup("cover_type", "marine"), followup("cargo_value", None), followup("marine_route", None)]
+    d = run(no_cover_facts() + answers)
+    assert not d.gate.blocked and d.premium_inr and d.outcome == "refer"
+    step = next(s for s in d.steps if s.rule == "UNDISCLOSED_ESSENTIAL")
+    assert step.because == ["followup_cargo_value", "followup_marine_route"]
+
+
+def test_liability_needs_limit_and_a_usable_turnover():
+    coarse = ev("crustdata_turnover", "turnover", {"low": 88_000_000_000, "high": 88_000_000_000_000},
+                "consistent_unconfirmed", kind="proxy_range")
+    d = run(no_cover_facts() + [coarse, followup("cover_type", "liability")])
+    assert d.gate.missing == ["liability_limit", "turnover"]  # a $1B-$1T band is not usable
+    answers = [followup("cover_type", "liability"), followup("liability_limit", 10_000_000),
+               followup("turnover", 50_000_000)]
+    d2 = run(no_cover_facts() + [coarse] + answers)
+    # 1 Cr limit x 1.0% (footwear) x 1.0 (turnover <= 10 Cr) = 1,00,000 + 18% GST
+    assert d2.outcome == "quote" and d2.premium_inr == round(100_000 * 1.18)
+
+
+def test_confirming_record_findings_clears_the_referral():
+    d = run(hero_facts() + HERO_ANSWERS)
+    fields = [q.field for q in d.questions]
+    assert {"confirm_sites", "confirm_hazard", "confirm_headcount"} <= set(fields)
+    yes = [followup("confirm_sites", "yes"), followup("confirm_hazard", "yes"),
+           followup("confirm_headcount", "the record is right")]
+    d2 = run(hero_facts() + HERO_ANSWERS + yes)
+    assert d2.outcome == "quote"  # everything disclosed when asked
+    assert rules_of(d2) == ["DISCLOSED_HAZARD"]  # the hazard is still priced, just not hidden
+    assert any(f.startswith("corrected") for f in d2.findings)
+    no = [followup("confirm_sites", "no"), followup("confirm_hazard", None)]
+    d3 = run(hero_facts() + HERO_ANSWERS + no)
+    assert d3.outcome == "refer" and {"UNDECLARED_SITE", "UNDECLARED_HAZARD"} <= set(rules_of(d3))
+    assert not {"confirm_sites", "confirm_hazard"} & {q.field for q in d3.questions}  # asked once
+
+
+def test_a_site_count_alone_is_not_an_undeclared_location():
+    count = ev("crustdata_sites", "sites", 1, "undeclared")  # applicant never gave a count
+    d = run([f for f in clean_facts() if f.field != "sites"] + [count])
+    assert "UNDECLARED_SITE" not in rules_of(d) and d.outcome == "quote"
+
+
+def test_what_would_change_my_mind_shows_the_price_of_each_finding():
+    facts = clean_facts() + [ev("jobs_sites_1", "sites", {"city": "Pune"}, "undeclared")]
+    d = run(facts)
+    assert d.outcome == "refer"
+    f = next(x for x in d.would_flip_if if x.fact == "jobs_sites_1")
+    assert f.then == "quote" and f.premium_inr < d.premium_inr

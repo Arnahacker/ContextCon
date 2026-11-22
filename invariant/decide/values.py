@@ -93,6 +93,15 @@ def latest_fetched(facts: Iterable[Fact]) -> str:
     return max(stamps) if stamps else ""
 
 
+def crore(x: float) -> str:
+    """Readable rupees: 506166697670 -> 'Rs 50,617 Cr', 4500000 -> 'Rs 45 lakh'."""
+    if abs(x) >= 1e7:
+        return f"{inr(round(x / 1e7))} Cr"
+    if abs(x) >= 1e5:
+        return f"{inr(round(x / 1e5))} lakh"
+    return inr(x)
+
+
 def inr(x: float) -> str:
     """Indian digit grouping: 20125000 -> 'Rs 2,01,25,000'."""
     n = int(round(x))

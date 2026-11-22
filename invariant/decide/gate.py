@@ -12,5 +12,5 @@ def resolved(facts: list[Fact], field: str) -> bool:
     return any(answered(f) for f in facts_for(facts, field))
 
 
-def missing(facts: list[Fact]) -> list[str]:
-    return [f for f in TIER1 if not resolved(facts, f)]
+def missing(facts: list[Fact], required: list[str] | None = None) -> list[str]:
+    return [f for f in (required or TIER1) if not resolved(facts, f)]

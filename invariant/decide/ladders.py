@@ -10,6 +10,7 @@ from typing import Optional
 
 from invariant.shapes import Fact
 
+from .derive import si_estimated
 from .gate import resolved
 from .values import answered, facts_for
 
@@ -34,8 +35,10 @@ LADDERS: dict[str, list[list[Spec]]] = {
                         "EPFO / ESIC returns")]],
     "sites": [[Spec("sites", "How many sites or units does the business operate from?",
                     "GST registration (additional places of business)")]],
-    "cover_type": [[Spec("cover_type", "Which cover is needed: fire, workmen's compensation, or both?",
-                         "the broker's cover request", ["fire", "wc", "fire_wc"])]],
+    "cover_type": [[Spec("cover_type", "Which cover is needed? fire = property (building, machinery, stock); "
+                                       "wc = workmen's compensation; fire_wc = both; marine = goods in transit; "
+                                       "liability = third-party claims",
+                         "the broker's cover request", ["fire", "wc", "fire_wc", "marine", "liability"])]],
     "sum_insured": [
         [Spec("sum_insured", "What total sum insured do you want (building + machinery + stock)?", _ASSETS)],
         [Spec("building_owned", "Is the building owned or rented?", "property papers or rent agreement", ["owned", "rented"]),
@@ -46,6 +49,15 @@ LADDERS: dict[str, list[list[Spec]]] = {
          Spec("machinery_value", "Roughly what is the machinery worth?", "balance sheet gross block")],
         [Spec("sum_insured", "Which band is the total value in?", _ASSETS, SI_BANDS)],
     ],
+    # marine cargo: priced on the value shipped and the route
+    "cargo_value": [[Spec("cargo_value", "Roughly what value of goods is shipped in a year (or this shipment, if a one-off)?",
+                          "sales invoices / shipping documents")]],
+    "marine_route": [[Spec("marine_route", "Are the shipments within India or international?",
+                           "shipping documents (bill of lading)", ["domestic", "international"])]],
+    # liability: priced on the limit bought and the turnover
+    "liability_limit": [[Spec("liability_limit", "What limit of cover is wanted (the most the policy pays per claim)?",
+                              "the broker's request", ["50 lakh", "1 Cr", "5 Cr", "10 Cr"])]],
+    "turnover": [[Spec("turnover", "What is the annual turnover?", "audited P&L or GST returns")]],
     "claims_history": [[Spec("claims_history", "Any fire, flood or accident claim in the last 5 years?",
                              "insurer claims history (loss run) for the last 5 years", ["yes", "no"])]],
     "wages": [
@@ -78,14 +90,20 @@ def state(facts: list[Fact], field: str) -> LadderState:
     if _exact(facts, field):
         return LadderState(0, [], False)
     done = resolved(facts, field)
+    # a sum insured resting on our own building estimate keeps its band question open:
+    # answering it replaces the estimate (and its UNDISCLOSED_ESSENTIAL loading)
+    estimated = field == "sum_insured" and done and si_estimated(facts)
+    band = LADDERS[field][-1][0] if estimated else None
     seen: dict[str, int] = {}
     for i, rung in enumerate(LADDERS[field], start=1):
         pending = []
         for spec in rung:
             seen[spec.field] = seen.get(spec.field, 0) + 1
-            if _followups(facts, spec.field) < seen[spec.field] and not (done and spec.field == field):
+            if _followups(facts, spec.field) < seen[spec.field] and not (done and spec.field == field and not estimated):
                 pending.append(spec)
         if pending:
+            if band and band not in pending and _followups(facts, field) < len(LADDERS[field]) - 1:
+                pending.append(band)
             return LadderState(i, pending, False)
     return LadderState(0, [], not done)
 

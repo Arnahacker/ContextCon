@@ -19,6 +19,23 @@ MACHINERY_LAKH_PER_WORKER = {
     "other": (2, 5),
 }
 
+# annual sales per worker, INR lakh, (low, high): estimates monthly sales (and so stock)
+# when the applicant cannot say and the record has no usable revenue
+REVENUE_LAKH_PER_WORKER = {
+    "leather": (15, 30), "footwear": (15, 30), "garments": (8, 15), "textiles": (15, 30),
+    "food_processing": (20, 40), "engineering": (20, 40), "chemicals": (40, 80), "brassware": (10, 20),
+    "other": (10, 30),
+}
+
+# built-up area per worker, sq ft, (low, high): estimates the building when the area is not known
+SQFT_PER_WORKER = (60, 150)
+
+# workers per site, (low, high): last-resort headcount when neither applicant nor record has one
+HEADCOUNT_PER_SITE = (20, 200)
+
+# a record revenue band wider than this ratio (Crustdata gives e.g. $1B-$1T) is too coarse to use
+MAX_REVENUE_RATIO = 5
+
 # construction cost per sq ft by roof type, INR
 COST_PER_SQFT = {"concrete": 1800, "tin_sheet": 1150, "other": 800}
 
@@ -32,6 +49,11 @@ LAKH = 100_000
 
 def stock_weeks(occ: str | None) -> tuple[int, int]:
     return STOCK_WEEKS.get(occ or "other", STOCK_WEEKS["other"])
+
+
+def revenue_per_worker(occ: str | None) -> tuple[int, int]:
+    lo, hi = REVENUE_LAKH_PER_WORKER.get(occ or "other", REVENUE_LAKH_PER_WORKER["other"])
+    return lo * LAKH, hi * LAKH
 
 
 def machinery_per_worker(occ: str | None) -> tuple[int, int]:

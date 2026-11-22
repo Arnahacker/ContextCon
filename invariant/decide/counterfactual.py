@@ -41,7 +41,48 @@ def _neutralise(facts: list[Fact], f: Fact) -> tuple[list[Fact], str]:
         return rest, f"no confirmed {v.get('type', 'adverse event')}: {v.get('title', '')}".rstrip(": ")
     if f.field == "sanctions":
         return rest, "no sanctions match"
+    if f.field == "occupancy":
+        return rest, f"the record's trade agrees with the declared one (record now says {f.value})"
     return rest, f"without {f.id}"
+
+
+def _loaders(steps: list[Step], facts: list[Fact]) -> list[Fact]:
+    """Evidence findings behind any step that refers, declines or raises the price."""
+    by_id = {f.id: f for f in facts}
+    out: list[Fact] = []
+    for s in steps:
+        if s.multiplier <= 1.0 and s.rule not in DECLINE_RULES | REFER_RULES:
+            continue
+        for fid in s.because:
+            f = by_id.get(fid)
+            if f and f.status in ("contradicts", "undeclared") and f not in out:
+                out.append(f)
+    return out
+
+
+def with_prices(facts: list[Fact], steps: list[Step], premium: int,
+                assess_fn: Callable[[list[Fact]], tuple[Optional[str], Optional[int]]],
+                flips: list[Flip]) -> list[Flip]:
+    """Attach the price to every outcome flip, then add one line per finding that only changes
+    the price ("without this, the premium would be Rs X")."""
+    out: list[Flip] = []
+    for fl in flips:
+        alt = facts
+        for fid in [fl.fact, *fl.also]:
+            f = next((x for x in alt if x.id == fid), None)
+            if f:
+                alt, _ = _neutralise(alt, f)
+        _, p = assess_fn(alt)
+        out.append(fl.model_copy(update={"premium_inr": p}))
+    seen = {fid for fl in flips for fid in (fl.fact, *fl.also)}
+    for f in _loaders(steps, facts):
+        if f.id in seen:
+            continue
+        alt, change = _neutralise(facts, f)
+        then, p = assess_fn(alt)
+        if then and p is not None and p < premium:
+            out.append(Flip(fact=f.id, change=change, then=then, premium_inr=p))
+    return out
 
 
 def would_flip_if(facts: list[Fact], steps: list[Step], outcome: str,
@@ -68,4 +109,4 @@ def would_flip_if(facts: list[Fact], steps: list[Step], outcome: str,
         return []
     n = len(drivers) - 1
     return [Flip(fact=f.id, change=f"{changes[f.id]} (with the other {n} finding{'s' if n > 1 else ''} also cleared)",
-                 then=then) for f in drivers]
+                 then=then, also=[d.id for d in drivers if d.id != f.id]) for f in drivers]

@@ -6,12 +6,15 @@ from typing import Optional
 
 from invariant.shapes import Fact, Step
 
-from .rate_card import LOADINGS
+from .rate_card import FIRE_PER_MILLE, LOADINGS
 from .values import facts_for
 
 DECLINE_RULES = {"CONFIRMED_FIRE", "SANCTIONS_MATCH"}
-REFER_RULES = {"HEADCOUNT_UNDERSTATED", "UNDECLARED_SITE", "UNDECLARED_HAZARD", "ADVERSE_EVENT"}
+REFER_RULES = {"HEADCOUNT_UNDERSTATED", "UNDECLARED_SITE", "UNDECLARED_HAZARD", "ADVERSE_EVENT",
+               "UNDISCLOSED_ESSENTIAL", "OCCUPANCY_MISMATCH", "COVER_NOT_PRICED"}
+UNPRICED_COVERS: set[str] = set()  # a recognised cover with no rate card would be verified, then referred
 SEVERE_EVENTS = {"fire", "explosion"}
+MAX_SITE_LOADINGS = 3  # undeclared sites beyond this are still shown and still refer, at x1.0
 RECENT_MONTHS = 24
 
 
@@ -47,23 +50,66 @@ def _ids(facts: list[Fact]) -> list[str]:
     return sorted(f.id for f in facts)
 
 
-def evaluate(facts: list[Fact], derived_tier1: dict[str, list[str]], skipped: list[str]) -> list[Step]:
+def confirmed(facts: list[Fact], field: str) -> Optional[bool]:
+    """The applicant's answer when shown a record finding: True (the record is right / yes),
+    False (no / my figure is right), None (not asked yet, or "don't know")."""
+    fs = [f for f in facts_for(facts, field) if f.origin == "applicant_followup"]
+    if not fs or fs[-1].status == "cannot_verify" or not isinstance(fs[-1].value, str):
+        return None
+    v = fs[-1].value.strip().lower()
+    if v.startswith(("yes", "the record", "record", "haan")):
+        return True
+    if v.startswith(("no", "my figure", "mine", "nahi")):
+        return False
+    return None
+
+
+def undeclared_sites(facts: list[Fact]) -> list[Fact]:
+    """Record locations the applicant did not mention (a count is not a location)."""
+    return [f for f in facts_for(facts, "sites") if f.status == "undeclared"
+            and ((isinstance(f.value, dict) and f.value.get("city")) or isinstance(f.value, str))]
+
+
+def undeclared_hazards(facts: list[Fact]) -> list[Fact]:
+    return [f for f in facts_for(facts, "hazardous_activity") if f.status == "undeclared"]
+
+
+def evaluate(facts: list[Fact], derived_tier1: dict[str, list[str]], skipped: list[str],
+             undisclosed: tuple[str, ...] | list[str] = ()) -> list[Step]:
     steps: list[Step] = []
 
     hc = facts_for(facts, "headcount")
     contra = [f for f in hc if f.status == "contradicts"]
-    if contra:
+    if contra and confirmed(facts, "confirm_headcount") is not True:
         claims = [f for f in hc if f.origin in ("declared", "applicant_followup")]
         steps.append(Step(rule="HEADCOUNT_UNDERSTATED", multiplier=LOADINGS["HEADCOUNT_UNDERSTATED"],
                           because=_ids(claims) + _ids(contra)))
 
-    for f in facts_for(facts, "sites"):
-        if f.status == "undeclared":
-            steps.append(Step(rule="UNDECLARED_SITE", multiplier=LOADINGS["UNDECLARED_SITE"], because=[f.id]))
+    occ = facts_for(facts, "occupancy")
+    occ_contra = [f for f in occ if f.status == "contradicts" and isinstance(f.value, str)]
+    if occ_contra:  # the record says a different trade: refer, priced at the dearer of the two rates
+        claims = [f for f in occ if f.origin in ("declared", "applicant_followup") and isinstance(f.value, str)]
+        said = claims[0].value if claims else "other"
+        rate = lambda o: FIRE_PER_MILLE.get(o, FIRE_PER_MILLE["other"])  # noqa: E731
+        ratio = max(rate(f.value) for f in occ_contra) / rate(said)
+        steps.append(Step(rule="OCCUPANCY_MISMATCH", multiplier=round(max(1.0, ratio), 2),
+                          because=_ids(claims) + _ids(occ_contra)))
 
-    hazards = [f for f in facts_for(facts, "hazardous_activity") if f.status == "undeclared"]
+    # every undeclared site is listed with its source, but only the first MAX_SITE_LOADINGS
+    # load the price (a global firm with 16 offices must not compound 1.1^16 = x4.6)
+    # once the applicant confirms the extra sites are theirs, they are disclosed: nothing to refer
+    n_loaded = 0
+    if confirmed(facts, "confirm_sites") is not True:
+        for f in undeclared_sites(facts):
+            mult = LOADINGS["UNDECLARED_SITE"] if n_loaded < MAX_SITE_LOADINGS else 1.0
+            n_loaded += 1
+            steps.append(Step(rule="UNDECLARED_SITE", multiplier=mult, because=[f.id]))
+
+    hazards = undeclared_hazards(facts)
     if hazards:
-        steps.append(Step(rule="UNDECLARED_HAZARD", multiplier=LOADINGS["UNDECLARED_HAZARD"], because=_ids(hazards)))
+        # disclosed when asked: still priced for the hazard, but no longer hidden (no referral)
+        rule = "DISCLOSED_HAZARD" if confirmed(facts, "confirm_hazard") is True else "UNDECLARED_HAZARD"
+        steps.append(Step(rule=rule, multiplier=LOADINGS["UNDECLARED_HAZARD"], because=_ids(hazards)))
 
     ref = reference_month(facts)
     events = [f for f in facts_for(facts, "adverse_event") if f.status in ("undeclared", "contradicts")]
@@ -86,6 +132,10 @@ def evaluate(facts: list[Fact], derived_tier1: dict[str, list[str]], skipped: li
 
     for field in sorted(derived_tier1):
         steps.append(Step(rule="DERIVED_VALUE", multiplier=LOADINGS["DERIVED_VALUE"], because=derived_tier1[field]))
+
+    if undisclosed:  # essential information only the applicant holds was not given
+        steps.append(Step(rule="UNDISCLOSED_ESSENTIAL", multiplier=LOADINGS["UNDISCLOSED_ESSENTIAL"],
+                          because=sorted(undisclosed)))
 
     for field in sorted(skipped):
         if field == "claims_history":
