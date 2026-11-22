@@ -44,6 +44,18 @@ input[type=text]{flex:1;min-width:160px;padding:7px 9px;border:1px solid var(--l
 .ok{color:var(--good);font-weight:600}.bad{color:var(--bad);font-weight:600}
 .hidden{display:none}.flip{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 .note{font-size:12px;color:var(--muted)}
+.why{padding:9px 0;border-bottom:1px solid var(--line)}.why:last-child{border-bottom:0}
+.why .t{font-weight:600}.why .d{margin:2px 0 4px}.eff{font-size:12px;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--chip);white-space:nowrap}
+.eff.up{color:var(--warn)}.eff.stop{color:var(--bad)}.eff.ref{color:var(--hold)}
+.verdict{margin:6px 0 2px}.total{margin-top:8px;font-weight:600}
+.finding{border-left:3px solid var(--warn);padding:6px 10px;margin:6px 0;background:var(--bg);border-radius:0 6px 6px 0}
+.finding .a{font-size:12px;margin-top:4px}.finding .a b{color:var(--accent)}
+.src{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}.src .s{width:18px;flex:none}
+.tag{font-size:10.5px;padding:1px 6px;border-radius:4px;background:var(--chip);color:var(--muted);cursor:pointer;white-space:nowrap;margin-left:4px;font-weight:500}
+.t-crustdata,.t-web{color:var(--accent)}.t-derived{color:var(--warn)}.t-declared,.t-applicant_followup{color:var(--good)}
+.alert{border:1px solid var(--bad);color:var(--bad);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-size:13px}
+.f-injection_attempt,.f-evidence_unavailable{border-left-color:var(--bad)}.f-corrected{border-left-color:var(--good)}
+.flip .p{font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -63,8 +75,9 @@ input[type=text]{flex:1;min-width:160px;padding:7px 9px;border:1px solid var(--l
     <div class="card" id="resolution"></div>
     <div class="grid">
       <div>
-        <div class="card"><h2>Gap table</h2><div id="gaps"></div></div>
-        <div class="card"><h2>Why: rules applied</h2><div id="steps"></div></div>
+        <div class="card"><h2>Gap table: what they said vs what the records say</h2><div id="gaps"></div></div>
+        <div class="card"><h2>Why this decision</h2><div id="steps"></div></div>
+        <div class="card"><h2>What we checked</h2><div id="checked"></div></div>
       </div>
       <div>
         <div class="card" id="decision"></div>
@@ -107,49 +120,186 @@ async function busy(btn,fn){btn.disabled=true;try{await fn()}catch(e){alert(e.me
 $('#run').onclick=()=>busy($('#run'),async()=>{CASE=await api('/api/cases',{prompt:$('#prompt').value});CHAT=[];render()});
 let CHAT=[];
 function factsBy(field){return (CASE.facts||[]).filter(f=>f.field===field)}
-function val(v){if(v==null)return '—';if(typeof v==='object'){if('low' in v)return `${fmt(v.low)}–${fmt(v.high)}`;return esc(v.title||v.activity||v.caption||JSON.stringify(v))}return esc(fmt(v))}
-function fmt(v){return typeof v==='number'&&v>=100000?inr(v):v}
+function val(v){if(v==null)return '—';if(typeof v==='object'){if('low' in v)return `${fmt(v.low)}–${fmt(v.high)}`;return esc(v.name||v.city||v.title||v.activity||v.caption||JSON.stringify(v))}return esc(fmt(v))}
+function fmt(v){if(typeof v!=='number')return v;if(v>=1e7)return '₹'+(v/1e7).toLocaleString('en-IN',{maximumFractionDigits:1})+' Cr';return v>=100000?inr(v):v}
+// where a value came from, shown as a small tag next to it (click for the full source)
+function srcName(f){const w=(f.source||{}).what||'';
+ if(f.origin==='declared')return 'from the request';if(f.origin==='applicant_followup')return "broker's answer";
+ if(f.origin==='derived')return 'our estimate';if(w.startsWith('opensanctions'))return 'OpenSanctions';
+ const m=w.match(/\/[a-z_]+(?:\/[a-z_]+)*/);return 'Crustdata '+(m?m[0]:'')}
+function srcTag(f){return `<span class="tag t-${f.origin}" onclick="showFact('${f.id}')" title="${esc((f.source||{}).what||'')}">${esc(srcName(f))}</span>`}
+function fieldVal(f){const v=f.value;if(f.field==='headcount_trend'&&typeof v==='number')return `${v>0?'+':''}${v}% staff in a year`;return val(v)}
+// ---------------------------------------------------------------- plain-language explanations
+const FIELD={company:'company',occupancy:'line of business',headcount:'number of staff',sites:'sites / units',
+ cover_type:'cover type',sum_insured:'amount to insure',claims_history:'past claims',hazardous_activity:'hazardous work',
+ adverse_event:'news',turnover:'yearly revenue',building_owned:'building owned or rented',building_area_sqft:'building area (sq ft)',
+ roof_type:'roof type',monthly_sales:'monthly sales',stock_weeks:'weeks of stock held',machinery_value:'machinery value',
+ building_value:'building value',stock_value:'stock value',wages:'yearly wage bill',pf_monthly:'monthly PF',
+ export_countries:'export countries',sanctions:'sanctions lists',headcount_trend:'staff trend (12 months)',
+ year_founded:'founded',cargo_value:'value of goods shipped',marine_route:'shipping route',liability_limit:'limit of cover',
+ confirm_sites:'confirms extra sites',confirm_hazard:'confirms hazardous work',confirm_headcount:'staff figure'};
+const fname=f=>FIELD[f]||String(f).replace(/_/g,' ');
+const STATUS={matches:'matches',contradicts:"doesn't match",undeclared:'not declared',consistent_unconfirmed:'not contradicted',cannot_verify:"can't verify"};
+const REFER=new Set(['HEADCOUNT_UNDERSTATED','UNDECLARED_SITE','UNDECLARED_HAZARD','ADVERSE_EVENT','UNDISCLOSED_ESSENTIAL','OCCUPANCY_MISMATCH','COVER_NOT_PRICED']);
+const DECLINE=new Set(['CONFIRMED_FIRE','SANCTIONS_MATCH']);
+const factById=id=>(CASE.facts||[]).find(f=>f.id===id);
+const isClaim=f=>f&&(f.origin==='declared'||f.origin==='applicant_followup');
+const chip=f=>`<span class="num" onclick="showFact('${f.id}')">${fieldVal(f)}</span>${srcTag(f)}`;
+const chips=fs=>fs.length?fs.map(chip).join(', '):'—';
+const titles=fs=>fs.map(f=>`<span class="num" onclick="showFact('${f.id}')">“${esc((f.value||{}).title||'article')}”${(f.value||{}).date?' ('+esc(f.value.date)+')':' (date unknown)'}</span>${srcTag(f)}`).join('; ');
+const pct=m=>Math.round((m-1)*100);
+const RULES={
+ HEADCOUNT_UNDERSTATED:{t:'Staff count understated',d:fs=>`The applicant said ${chips(fs.filter(isClaim))} people; public records show at least ${chips(fs.filter(f=>!isClaim(f)))}. More people usually means more machinery, stock and risk than declared.`},
+ UNDECLARED_SITE:{t:'Locations the applicant did not mention',d:fs=>`Records show the company in ${chips(fs)} as well. Undeclared sites are property we would cover without knowing about it.`},
+ UNDECLARED_HAZARD:{t:'Risky work not mentioned',d:fs=>`Job ads show ${chips(fs)}: hazardous work (e.g. boilers, dyeing, tanning) that the applicant did not declare.`},
+ DISCLOSED_HAZARD:{t:'Risky work (disclosed when asked)',d:fs=>`Job ads show ${chips(fs)}, and the applicant confirmed it when asked. It is priced for the extra risk, but no longer needs a person to review it.`},
+ ADVERSE_EVENT:{t:'Bad news about this company',d:fs=>`News that names this company: ${titles(fs)}.`},
+ CONFIRMED_FIRE:{t:'Serious fire at this company in the last 2 years',d:fs=>`${titles(fs)}. A recent fire or explosion at the same company is a hard stop.`},
+ SANCTIONS_MATCH:{t:'Sanctions list match',d:fs=>`The company matches an entry on a sanctions list: ${chips(fs)}.`},
+ OCCUPANCY_MISMATCH:{t:'Different line of business',d:fs=>`The applicant said ${chips(fs.filter(isClaim))}; the records say ${chips(fs.filter(f=>!isClaim(f)))}. We price at the riskier of the two.`},
+ UNDISCLOSED_ESSENTIAL:{t:'Penalty: essential information not given',d:fs=>`The applicant answered “don't know” to: ${[...new Set(fs.map(f=>fname(f.field)))].join(', ')}. Only the applicant can know this, so we priced on our own cautious estimate and added a penalty. Answering removes it.`},
+ CLAIMS_HISTORY_UNKNOWN:{t:'Past claims unknown',d:()=>'The applicant could not say whether there were fire, flood or accident claims in the last 5 years.'},
+ DERIVED_VALUE:{t:'Some values are estimates',d:fs=>`${[...new Set(fs.map(f=>fname(f.field)))].join(', ')} ${fs.length>1?'were':'was'} estimated rather than stated (click to see how), so a small safety margin is added.`},
+ COVER_NOT_PRICED:{t:'Cover outside our price list',d:fs=>`${chips(fs)} cover is not on this desk's rate card (we price fire and workmen's compensation). Everything was still checked; a specialist sets the price.`},
+ UNKNOWN:{t:'Information missing',d:fs=>`Nobody could give: ${[...new Set(fs.map(f=>fname(f.field)))].join(', ')||'—'}. A margin is added for the unknown.`},
+};
+function groupSteps(steps){const g={};steps.forEach(s=>{const k=s.rule.startsWith('UNKNOWN_')?'UNKNOWN':s.rule;(g[k]=g[k]||[]).push(s)});return g}
+function effect(k,ss){
+ if(DECLINE.has(k))return '<span class="eff stop">declines the cover</span>';
+ if(k==='COVER_NOT_PRICED')return '<span class="eff ref">needs a specialist</span>';
+ const loaded=ss.filter(s=>s.multiplier>1),m=ss.reduce((a,s)=>a*s.multiplier,1);
+ let e='';
+ if(k==='UNDECLARED_SITE')e=`<span class="eff up">+${pct(ss[0].multiplier>1?ss[0].multiplier:1.1)}% for each of the first ${loaded.length}${ss.length>loaded.length?` (the other ${ss.length-loaded.length} listed, no extra charge)`:''}</span>`;
+ else e=m>1?`<span class="eff up">+${pct(m)}% price</span>`:'<span class="eff">no price change</span>';
+ return e+(REFER.has(k)?' <span class="eff ref">sends it to a person</span>':'');
+}
+function explainRules(d){
+ const steps=d.steps||[];
+ if(!steps.length)return `<p class="note">${d.outcome==='hold'?'So far the records show nothing that would change the price.':'Nothing in the records raises the price or needs a person to look at it.'}</p>`;
+ const g=groupSteps(steps);let total=1;steps.forEach(s=>total*=s.multiplier);
+ const rows=Object.entries(g).map(([k,ss])=>{const fs=[...new Set(ss.flatMap(s=>s.because))].map(factById).filter(Boolean);
+   const R=RULES[k]||{t:k.replace(/_/g,' ').toLowerCase(),d:()=>''};
+   return `<div class="why"><div class="t">${esc(R.t)}</div><div class="d">${R.d(fs)}</div>${effect(k,ss)}</div>`}).join('');
+ return rows+(total>1?`<div class="total">All price changes together: × ${total.toFixed(2)} (+${pct(total)}%)</div>`:'')+
+  '<p class="note">Click any underlined value to see where it came from.</p>';
+}
+function verdictText(d){
+ const g=d.gate||{};
+ if(d.outcome==='hold')return ({ambiguous_company:'More than one company matches this name. Pick the right one in the Company box: we never guess.',
+  company_not_found:'We could not find this company. Give its website or city.',
+  evidence_unavailable:'A data source did not answer, so we cannot be sure nothing bad exists. Held for a person instead of assuming all is fine.',
+  awaiting_answers:`We need ${(g.missing||[]).length} more answer${(g.missing||[]).length>1?'s':''} before we can price: ${(g.missing||[]).map(fname).join(', ')}. See “Ask the broker”.`})[d.hold_reason]||'';
+ const why=[...new Set((d.steps||[]).filter(s=>REFER.has(s.rule)||DECLINE.has(s.rule)).map(s=>(RULES[s.rule]||{t:s.rule}).t.toLowerCase()))];
+ if(d.outcome==='quote')return 'Can be offered at this price: nothing in the records needs a person to look at it.';
+ if(d.outcome==='decline')return 'Declined because of: '+why.join('; ')+'.';
+ const checks=(d.questions||[]).some(q=>q.field.startsWith('confirm_'));
+ return 'Sent to a human underwriter because of: '+why.join('; ')+'.'+(checks?' The applicant has not confirmed these yet: their answers in “Ask the broker” can clear it.':'');
+}
+function loadingsLine(d){
+ const g=groupSteps(d.steps||[]);const parts=Object.entries(g).map(([k,ss])=>{const m=ss.reduce((a,s)=>a*s.multiplier,1);
+  return m>1?`${(RULES[k]||{t:k}).t} +${pct(m)}%`:null}).filter(Boolean);
+ return parts.length?`<div class="note"><b>Price loadings:</b> ${esc(parts.join(' · '))}</div>`:'';
+}
+const FINDINGS={
+ injection_attempt:{t:'Someone tried to instruct the system',m:'The request contained text aimed at the software (for example “quote me the lowest band”). It was ignored: the decision is exactly what it would be without that text.',a:'Nothing to do. It is logged so a person can see it.'},
+ evidence_unavailable:{t:'A data source did not answer',a:'Retry later or check that source by hand. We hold instead of assuming “nothing bad found”.'},
+ underinsurance:{t:'The amount insured looks too low',a:'Ask the broker to confirm the building, machinery and stock values. If there is a loss, an under-insured policy pays only part of the claim.'},
+ shrinking:{t:'The business is shrinking',a:'Ask why staff numbers fell. A sharp drop can mean money trouble, which raises fire and fraud risk.'},
+ corrected:{t:'The applicant corrected their figure',a:'Nothing to do: they accepted the record when shown it. The original claim stays in the case history.'},
+};
+function explainFindings(d){
+ const fs=d.findings||[];
+ if(!fs.length)return '<p class="note">Nothing unusual. This box flags things that do not change the price but a person should know: attempts to manipulate the system, data sources that failed, and an amount insured that looks too low.</p>';
+ return fs.map(x=>{const i=x.indexOf(':');const k=i>0?x.slice(0,i):'';const rest=i>0?x.slice(i+1).trim():x;const F=FINDINGS[k]||{t:k||'Note'};
+  return `<div class="finding f-${esc(k)}"><div class="t"><b>${({injection_attempt:'⚠ ',evidence_unavailable:'⛔ ',underinsurance:'₹ ',shrinking:'↘ ',corrected:'✓ '})[k]||''}${esc(F.t)}</b></div><div>${esc(F.m||rest)}</div>${F.a?`<div class="a"><b>What to do:</b> ${esc(F.a)}</div>`:''}</div>`}).join('');
+}
+const CALLS={'/company/identify':'Which company is this? (name → company record)',
+ '/company/enrich':'Company profile: staff count, offices, line of business, revenue estimate, news',
+ '/job/search':'Job ads: what work they really do, and where',
+ '/web/search/live':'Web news search: fires, accidents, court cases, strikes',
+ '/web/enrich/live':'Opened the news articles to read their dates',
+ 'opensanctions:/match/default':'Sanctions list check'};
+function explainChecked(){
+ const reader=({gemini:'Gemini',claude:'Claude',rules:'built-in rules (no AI)',fixture:'a saved AI reading'})[CASE.reader]||CASE.reader;
+ const calls=(CASE.calls||[]).map(c=>`<div class="src"><span class="s ${c.ok?'ok':'bad'}">${c.ok?'✓':'✗'}</span><div><b>${esc(CALLS[c.endpoint]||c.endpoint)}</b>
+   <div class="note">Crustdata ${esc(c.endpoint)} · ${c.ok?(c.cached?'answered (from cache, free)':`answered · ${c.credits} credits`):'did not answer: '+esc(c.error||'')}</div></div></div>`).join('');
+ const news=(CASE.news_checked||[]).map(n=>`<div class="src"><span class="s">${n.verdict.startsWith('Counted')?'⚠':'·'}</span><div>${n.url?`<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>`:esc(n.title)}
+   <div class="note">${esc(n.date||'date unknown')} · ${esc(n.via)} · <b>${esc(n.verdict)}</b></div></div></div>`).join('');
+ return `${reader?`<div class="src"><span class="s ok">✓</span><div><b>Read the request</b><div class="note">${esc(reader)} filled in the form. It does not decide or price anything.</div></div></div>`:''}${calls||'<p class="note">No data sources called yet.</p>'}
+  ${(CASE.news_checked||[]).length?`<h3 style="font-size:13px;margin:12px 0 4px">News we read (${CASE.news_checked.length})</h3>${news}
+  <p class="note">News counts only when it clearly names this company. Anything else is listed but ignored.</p>`:''}`;
+}
+// a question blocks pricing when its field (or, for sum insured, one of its parts) is still missing
+const SI_PARTS=['building_owned','building_area_sqft','roof_type','monthly_sales','stock_weeks','machinery_value'];
+function blocks(q){const m=((CASE.decision||{}).gate||{}).missing||[];return m.includes(q.field)||(m.includes('sum_insured')&&SI_PARTS.includes(q.field))}
 function render(){
  $('#result').classList.remove('hidden');const d=CASE.decision||{};const r=CASE.resolution||{};
  let res=`<h2>Company</h2>`;
- if(r.status==='resolved')res+=`<div class="row"><b>${esc(r.name)}</b><span class="mono">${esc(r.domain||'')} · crustdata id ${esc(r.company_id)}</span></div>`;
- if(CASE.reader)res+=`<div class="note">Prompt read by ${({rules:'rules (no LLM)',claude:'Claude',gemini:'Gemini',fixture:'saved LLM reading'})[CASE.reader]||CASE.reader}: the reader only fills the form; code decides.</div>`;
- else if(r.status==='ambiguous')res+=`<div>Two companies match. <b>Not guessing</b>, which one?</div><div class="row" style="margin-top:6px">${(r.candidates||[]).map(c=>`<button class="ghost" onclick="choose('${esc(c.domain)}')">${esc(c.name)} · ${esc(c.location||c.domain)} (${c.confidence})</button>`).join('')}</div>`;
+ if(r.status==='resolved')res+=`<div class="row"><b>${esc(r.name)}</b><span class="mono">${esc(r.domain||'')} · crustdata id ${esc(r.company_id)}</span><span class="tag">Crustdata /company/identify</span></div>`;
+ else if(r.status==='ambiguous')res+=`<div>${(r.candidates||[]).length} companies match this name. <b>We don't guess</b>: which one is it?</div>
+   <div class="row" style="margin-top:6px">${(r.candidates||[]).map(c=>`<button class="ghost" onclick="choose('${esc(c.domain||'')}')" ${c.domain?'':'disabled title="no website on record"'}>${esc(c.name)} · ${esc(c.domain||'no website')}${c.location?' · '+esc(c.location):''}</button>`).join('')}</div>`;
+ else if(r.status==='not_found')res+=`<div>No company found with this name on Crustdata.</div>`;
  else res+=`<div>${esc(r.status)}</div>`;
+ if(r.status!=='resolved')res+=`<div class="row" style="margin-top:8px"><span class="note">None of these? Type the company's website:</span>
+   <input type="text" id="site" placeholder="e.g. bata.in" style="max-width:220px"><button class="ghost" onclick="chooseTyped()">Use this website</button></div>`;
+ else res+=`<div class="note" style="margin-top:4px">Wrong company? <a href="#" onclick="event.preventDefault();this.parentNode.nextElementSibling.classList.toggle('hidden')">Pick by website</a></div>
+   <div class="row hidden" style="margin-top:4px"><input type="text" id="site" placeholder="e.g. bata.in" style="max-width:220px"><button class="ghost" onclick="chooseTyped()">Use this website</button></div>`;
+ if(CASE.reader)res+=`<div class="note">Request read by ${({rules:'built-in rules (no AI)',claude:'Claude',gemini:'Gemini',fixture:'a saved AI reading'})[CASE.reader]||CASE.reader}: the AI only fills in the form; fixed rules decide.</div>`;
  if(CASE.duplicate_of)res+=`<div class="note">Same request as case ${esc(CASE.duplicate_of)}: one record, one decision, no second quote.</div>`;
  $('#resolution').innerHTML=res;
  const gate=d.gate||{};
- $('#decision').innerHTML=`<h2>Decision</h2><div class="outcome o-${d.outcome}">${(d.outcome||'').toUpperCase()}</div>
-  ${d.hold_reason?`<div class="note">${esc(d.hold_reason.replace(/_/g,' '))}${gate.blocked?': need '+gate.missing.length+' answer(s) to price ('+gate.missing.join(', ')+')':''}</div>`:''}
-  <div style="font-size:20px;margin-top:6px">${d.premium_inr!=null?inr(d.premium_inr):''}</div>
-  ${d.premium_range_inr?`<div class="note">range ${inr(d.premium_range_inr[0])} – ${inr(d.premium_range_inr[1])} · incl. 18% GST · illustrative rate card</div>`:''}
+ const inj=(d.findings||[]).some(f=>f.startsWith('injection_attempt'));
+ $('#decision').innerHTML=`${inj?`<div class="alert"><b>⚠ Prompt injection detected and ignored.</b> The request tried to instruct the system (e.g. to approve or pick a price). The decision below is exactly what it would be without that text.</div>`:''}
+  <h2>Decision</h2><div class="outcome o-${d.outcome}">${(d.outcome||'').toUpperCase()}</div>
+  <div class="verdict">${esc(verdictText(d))}</div>
+  <div style="font-size:20px;margin-top:6px">${d.premium_inr!=null?inr(d.premium_inr)+' <span class="note">a year, incl. 18% GST</span>':''}</div>
+  ${d.premium_range_inr&&d.premium_range_inr[0]!==d.premium_range_inr[1]?`<div class="note">between ${inr(d.premium_range_inr[0])} and ${inr(d.premium_range_inr[1])}, because some values are estimates</div>`:''}
+  ${d.premium_inr!=null?loadingsLine(d):''}
+  ${d.premium_inr!=null?'<div class="note">Illustrative rate card (placeholder rates, not a filed tariff).</div>':''}
   <div class="mono" style="margin-top:8px">hash ${esc((d.hash||'').slice(0,16))}… · rules ${esc(d.rules_version)}</div>`;
  // gap table
  const fields=[...new Set((CASE.facts||[]).map(f=>f.field))];
- $('#gaps').innerHTML=`<table><tr><th>Field</th><th>Applicant said</th><th>Record says</th><th>Status</th></tr>${fields.map(fl=>{
-   const fs=factsBy(fl);const dec=fs.filter(f=>f.origin==='declared'||f.origin==='applicant_followup');const rec=fs.filter(f=>!(f.origin==='declared'||f.origin==='applicant_followup'));
-   const cell=a=>a.map(f=>`<span class="num" onclick="showFact('${f.id}')">${val(f.value)}</span>`).join('<br>')||'—';
-   const st=rec.length?rec:dec;return `<tr><td>${esc(fl.replace(/_/g,' '))}</td><td>${cell(dec)}</td><td>${cell(rec)}</td><td>${st.map(f=>`<span class="st st-${f.status}">${f.status.replace(/_/g,' ')}</span>`).join(' ')}</td></tr>`}).join('')}</table>
-   <p class="note">Click any value for its source.</p>`;
- $('#steps').innerHTML=(d.steps||[]).length?`<table><tr><th>Rule</th><th>×</th><th>Because</th></tr>${d.steps.map(s=>`<tr><td>${esc(s.rule)}</td><td>${s.multiplier}</td><td>${s.because.map(b=>`<span class="num" onclick="showFact('${b}')">${esc(b)}</span>`).join(', ')}</td></tr>`).join('')}</table>`:'<span class="note">No loadings.</span>';
+ $('#gaps').innerHTML=`<table><tr><th>What</th><th>Applicant said</th><th>Records say</th><th>Result</th></tr>${fields.map(fl=>{
+   const fs=factsBy(fl);const dec=fs.filter(isClaim);const rec=fs.filter(f=>!isClaim(f));
+   const cell=a=>a.map(f=>`<span class="num" onclick="showFact('${f.id}')">${fieldVal(f)}</span> ${srcTag(f)}`).join('<br>')||'—';
+   const st=[...new Set((rec.length?rec:dec).map(f=>f.status))];return `<tr><td>${esc(fname(fl))}</td><td>${cell(dec)}</td><td>${cell(rec)}</td><td>${st.map(s=>`<span class="st st-${s}">${esc(STATUS[s]||s)}</span>`).join(' ')}</td></tr>`}).join('')}</table>
+   <p class="note">Click any value to see its source and date.</p>`;
+ $('#steps').innerHTML=explainRules(d);
+ $('#checked').innerHTML=explainChecked();
  // questions
  $('#chat').innerHTML=CHAT.map(m=>`<div class="msg ${m.me?'me':''}">${esc(m.t)}</div>`).join('');
  const pend=CASE.pending||[];
- $('#questions').innerHTML=pend.map(p=>`<div class="q"><div>${esc(p.display)}</div><div class="row" style="margin-top:6px"><button class="primary" onclick="confirmA('${p.field}',true)">Yes</button><button class="ghost" onclick="confirmA('${p.field}',false)">Edit</button></div></div>`).join('')+
-  (d.questions||[]).filter(q=>!pend.some(p=>p.field===q.field)).map((q,i)=>`<div class="q"><div><b>${esc(q.ask)}</b></div>
-   <div class="worth">worth ${inr(q.worth_inr)} · record we'd need: ${esc(q.record_we_need)}</div>
-   <div class="row" style="margin-top:6px">${q.options&&q.options.length?q.options.map(o=>`<button class="ghost" onclick="answerQ(${i},'${esc(o)}')">${esc(o)}</button>`).join(''):`<input type="text" id="a${i}" placeholder="Type an answer, any wording"><button class="primary" onclick="answerQ(${i})">Send</button>`}
-   <button class="ghost" onclick="skipQ('${q.field}')">Don't know</button></div></div>`).join('')||'<span class="note">Nothing more to ask.</span>';
- $('#flips').innerHTML=(d.would_flip_if||[]).map(f=>`<div class="flip"><span>If <b>${esc(f.change)}</b> → ${esc(f.then).toUpperCase()}</span><button class="ghost" onclick="flip('${f.fact}')">Flip it</button></div>`).join('')||'<span class="note">No single fact flips this decision.</span>';
- $('#findings').innerHTML=(d.findings||[]).map(f=>`<div>• ${esc(f)}</div>`).join('')||'<span class="note">None.</span>';
+ // one question at a time: confirm a pending reading first, else the next question; the rest are listed as "coming up"
+ const qs=(d.questions||[]).filter(q=>!pend.some(p=>p.field===q.field));
+ const label=q=>blocks(q)?'<b>needed to price</b>':q.field.startsWith('confirm_')?'<b>can change the decision</b>'+(q.worth_inr?` · worth ${inr(q.worth_inr)}`:''):`worth ${inr(q.worth_inr)}`;
+ const ask=q=>`<div class="q"><div><b>${esc(q.ask)}</b></div>
+   <div class="worth">${label(q)} · record we'd need: ${esc(q.record_we_need)}</div>
+   <div class="row" style="margin-top:6px">${q.options&&q.options.length?q.options.map(o=>`<button class="ghost" onclick="answerQ('${q.field}','${esc(o)}')">${esc(o)}</button>`).join(''):`<input type="text" id="ans" placeholder="Type an answer, any wording" onkeydown="if(event.key==='Enter')answerQ('${q.field}')"><button class="primary" onclick="answerQ('${q.field}')">Send</button>`}
+   <button class="ghost" onclick="skipQ('${q.field}')">Don't know</button></div></div>`;
+ $('#questions').innerHTML=pend.length?pend.slice(0,1).map(p=>`<div class="q"><div>${esc(p.display)}. Correct?</div><div class="row" style="margin-top:6px"><button class="primary" onclick="confirmA('${p.field}',true)">Yes</button><button class="ghost" onclick="confirmA('${p.field}',false)">Edit</button></div></div>`).join('')
+  :qs.length?ask(qs[0])+(qs.length>1?`<div class="note" style="margin-top:8px">Coming up (${qs.length-1}): ${qs.slice(1).map(q=>esc(fname(q.field.replace(/^confirm_/,'')))+(q.field.startsWith('confirm_')?' (check)':'')).join(' · ')}</div>`:'')
+  :'<span class="note">Nothing more to ask.</span>';
+ const fl=d.would_flip_if||[];const now=d.premium_inr;
+ const result=f=>`${f.then===d.outcome?'still '+esc(f.then).toUpperCase():'<b>'+esc(f.then).toUpperCase()+'</b>'}${f.premium_inr!=null?' at '+inr(f.premium_inr)+(now!=null&&f.premium_inr<now?` <span class="p">(${inr(now-f.premium_inr)} cheaper)</span>`:''):''}`;
+ const comb=fl.map((f,i)=>[f,i]).filter(([f])=>(f.also||[]).length);const single=fl.map((f,i)=>[f,i]).filter(([f])=>!(f.also||[]).length);
+ $('#flips').innerHTML=((comb.length?`<div class="flip"><span>If <b>none of these were true</b>: ${comb.map(([f])=>esc(f.change.replace(/\s*\(with the other.*\)$/,''))).join('; ')} → ${result(comb[0][0])}</span><button class="ghost" onclick="flip(${comb[0][1]})">Flip it</button></div>`:'')
+  +single.map(([f,i])=>`<div class="flip"><span>If <b>${esc(f.change)}</b> → ${result(f)}</span><button class="ghost" onclick="flip(${i})">Flip it</button></div>`).join(''))||`<span class="note">${d.outcome==='quote'?'Already the best outcome: no finding is holding the price up.':d.outcome==='hold'?'Nothing to flip until the case can be priced: answer the questions first.':'No record finding is behind this. Answering the questions in “Ask the broker” is what can change it.'}</span>`;
+ $('#findings').innerHTML=explainFindings(d);
 }
-async function answerQ(i,opt){const q=CASE.decision.questions[i];const reply=opt??$('#a'+i).value;if(!reply)return;CHAT.push({me:false,t:q.ask},{me:true,t:reply});
+async function chooseTyped(){const v=($('#site').value||'').trim().replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*$/,'');if(v)await choose(v)}
+async function answerQ(field,opt){const q=CASE.decision.questions.find(x=>x.field===field);const reply=opt??$('#ans').value;if(!reply)return;CHAT.push({me:false,t:q.ask},{me:true,t:reply});
  const r=await api(`/api/cases/${CASE.case_id}/answer`,{field:q.field,question:q.ask,reply,options:q.options&&q.options.length?q.options:null});CASE=r.case;render()}
 async function confirmA(field,accept){CASE=await api(`/api/cases/${CASE.case_id}/confirm`,{field,accept});render()}
-async function skipQ(field){CHAT.push({me:true,t:"Don't know"});CASE=await api(`/api/cases/${CASE.case_id}/skip`,{field});render()}
+async function skipQ(field){const q=(CASE.decision.questions||[]).find(x=>x.field===field);CHAT.push({me:false,t:q?q.ask:fname(field)},{me:true,t:"Don't know"});CASE=await api(`/api/cases/${CASE.case_id}/skip`,{field});render()}
 async function choose(domain){CASE=await api(`/api/cases/${CASE.case_id}/choose`,{domain});render()}
-async function flip(fact){const d=await api(`/api/cases/${CASE.case_id}/whatif`,{fact_id:fact});
- openPanel(`<h3>What if ${esc(fact)} did not hold?</h3><div class="outcome o-${d.outcome}">${d.outcome.toUpperCase()}</div><div>${d.premium_inr!=null?inr(d.premium_inr):''}</div><p class="note">Same rules, one fact changed. Nothing is saved.</p>`)}
+async function flip(i){const f=CASE.decision.would_flip_if[i];const also=f.also||[];
+ const d=await api(`/api/cases/${CASE.case_id}/whatif`,{fact_id:f.fact,also});const now=CASE.decision;
+ openPanel(`<h3>What if: ${esc(also.length?'none of these findings were true':f.change)}</h3><div class="outcome o-${d.outcome}">${d.outcome.toUpperCase()}</div>
+  <div>${d.premium_inr!=null?inr(d.premium_inr):''}</div>
+  <p class="note">Right now: ${esc((now.outcome||'').toUpperCase())}${now.premium_inr!=null?' at '+inr(now.premium_inr):''}.</p>
+  <p class="note">Pretended not to be true: ${[f.fact,...also].map(factById).filter(Boolean).map(x=>`${esc(fname(x.field))} ${val(x.value)}`).join(', ')}.</p>
+  <p class="note">Still counted: ${[...new Set((d.steps||[]).map(s=>(RULES[s.rule.startsWith('UNKNOWN_')?'UNKNOWN':s.rule]||{t:s.rule}).t))].map(esc).join('; ')||'nothing'}.</p>
+  <p class="note">Same rules, facts changed only here. Nothing is saved: the real decision changes only if the evidence or answers change.</p>`)}
 function showFact(id){const f=(CASE.facts||[]).find(x=>x.id===id);if(!f)return;const s=f.source||{};
  openPanel(`<h3>${esc(f.field.replace(/_/g,' '))}</h3><div><span class="st st-${f.status}">${esc(f.status)}</span> · ${esc(f.origin)} · ${esc(f.evidence_kind)}</div>
  <p><b>${val(f.value)}</b></p><table>

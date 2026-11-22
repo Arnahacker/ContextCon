@@ -6,10 +6,12 @@ only re-run the pure Decide step.
 """
 from __future__ import annotations
 
+import re
 from typing import Optional
 
 from invariant.case import store
 from invariant.contracts import DecideInput, EvidenceResult, FieldReading
+from invariant.decide.derive import derive
 from invariant.decide.engine import decide
 from invariant.evidence.gather import gather
 from invariant.read.answer import followup_fact, read_answer
@@ -35,6 +37,8 @@ def _state(case_id: str) -> dict:
             pending.pop(p["fact"]["field"], None)
         elif e["kind"] == "answer_rejected":
             pending.pop(p["field"], None)
+        elif e["kind"] == "answer_confirmed_company":  # handled by re-gathering, not as a fact
+            pending.pop("company", None)
     return {
         "form": Form.model_validate(form) if form else None,
         "evidence": EvidenceResult.model_validate(ev) if ev else None,
@@ -128,7 +132,13 @@ def confirm(case_id: str, field: str, accept: bool = True) -> Decision:
     if not accept:
         store.append(case_id, "answer_rejected", {"field": field})
         return Decision.model_validate(store.last(case_id, "decision"))
-    fact = followup_fact(FieldReading.model_validate(p), store.now_iso())
+    reading = FieldReading.model_validate(p)
+    if field == "company" and reading.kind == "value":
+        domain = _company_domain(case_id, str(reading.value))
+        if domain:  # same as picking the candidate in the Company box: re-gather for it
+            store.append(case_id, "answer_confirmed_company", {"value": reading.value, "domain": domain})
+            return choose_company(case_id, domain)
+    fact = followup_fact(reading, store.now_iso())
     if fact is None:  # a refused reading (e.g. an injection attempt) records nothing
         store.append(case_id, "answer_rejected", {"field": field})
         return Decision.model_validate(store.last(case_id, "decision"))
@@ -139,15 +149,35 @@ def confirm(case_id: str, field: str, accept: bool = True) -> Decision:
     return _redecide(case_id)
 
 
+_DOMAIN = re.compile(r"^(?:https?://)?(?:www\.)?([a-z0-9-]+(?:\.[a-z0-9-]+)+)/?$", re.I)
+
+
+def _company_domain(case_id: str, value: str) -> Optional[str]:
+    """A confirmed company answer -> the domain to re-gather for, or None.
+    Matches one of the decision's candidates by its option label, name or domain;
+    otherwise a reply that is itself a website (the 'could not find' question)."""
+    d = store.last(case_id, "decision") or {}
+    v = value.strip().lower()
+    for c in d.get("candidates") or []:
+        label = f"{c.get('name')} ({c.get('location') or c.get('domain') or c.get('company_id')})"
+        if c.get("domain") and v in {label.lower(), str(c.get("name", "")).lower(), c["domain"].lower()}:
+            return c["domain"]
+    m = _DOMAIN.match(value.strip())
+    return m.group(1).lower() if m else None
+
+
 def skip(case_id: str, field: str, question: str = "") -> Decision:
     reading = FieldReading(field=field, kind="unknown", display="Skipped: I'll apply the loading for this unknown.")
     store.append(case_id, "answer_read", reading.model_dump(mode="json"))
     return confirm(case_id, field, True)
 
 
-def what_if(case_id: str, fact_id: str, value=None, status: str = "matches") -> Decision:
-    """'What would change my mind': re-decide with one fact changed. Not persisted."""
+def what_if(case_id: str, fact_id: str, value=None, status: str = "matches",
+            also: Optional[list[str]] = None) -> Decision:
+    """'What would change my mind': re-decide with one fact changed (plus any facts a flip says
+    must be cleared with it). Not persisted."""
     st = _state(case_id)
+    cleared = set(also or [])
     facts = []
     for f in _all_facts(st):
         if f.id == fact_id:
@@ -155,6 +185,8 @@ def what_if(case_id: str, fact_id: str, value=None, status: str = "matches") -> 
             if value is not None:
                 upd["value"] = value
             f = Fact.model_validate({**f.model_dump(), **upd})
+        elif f.id in cleared:
+            f = Fact.model_validate({**f.model_dump(), "status": status})
         facts.append(f)
     return _decide(case_id, st, facts)
 
@@ -165,6 +197,7 @@ def view(case_id: str) -> dict:
     d = store.last(case_id, "decision")
     ev = st["evidence"]
     facts = _all_facts(st) if (st["form"] and ev) else []
+    facts += derive(facts)  # estimates shown with their working (Decide re-derives the same ones)
     return {
         "case_id": case_id,
         "prompt": store.events(case_id)[0]["payload"]["text"],
@@ -172,6 +205,7 @@ def view(case_id: str) -> dict:
         "resolution": ev.resolution.model_dump(mode="json") if ev else None,
         "facts": [f.model_dump(mode="json") for f in facts],
         "calls": [c.model_dump(mode="json") for c in ev.calls] if ev else [],
+        "news_checked": [n.model_dump(mode="json") for n in ev.news_checked] if ev else [],
         "decision": d,
         "pending": list(st["pending"].values()),
         "reader": (store.last(case_id, "reader") or {}).get("reader"),

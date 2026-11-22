@@ -44,6 +44,7 @@ class WhatIf(BaseModel):
     fact_id: str
     value: Any = None
     status: str = "matches"
+    also: list[str] = []  # facts a combined flip clears together with fact_id
 
 
 @app.get("/")
@@ -103,7 +104,7 @@ def choose(case_id: str, body: Choose):
 
 @app.post("/api/cases/{case_id}/whatif")
 def what_if(case_id: str, body: WhatIf):
-    return service.what_if(case_id, body.fact_id, body.value, body.status).model_dump(mode="json")
+    return service.what_if(case_id, body.fact_id, body.value, body.status, body.also).model_dump(mode="json")
 
 
 @app.post("/api/invariance")
