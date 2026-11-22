@@ -13,7 +13,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from invariant.case import service, store, testrun
+from invariant.case import service, store, testrun, watcher
+from invariant.evidence.watch import WatchUnavailable
 
 STATIC = Path(__file__).parent / "static"
 app = FastAPI(title="INVARIANT")
@@ -95,6 +96,47 @@ def dashboard():
 @app.get("/api/cases")
 def cases():
     return store.list_cases()
+
+
+@app.delete("/api/cases")
+def delete_all_cases():
+    return {"deleted": store.delete_all_cases()}
+
+
+@app.delete("/api/cases/{case_id}")
+def delete_case(case_id: str):
+    if not store.delete_case(case_id):
+        raise HTTPException(404, "no such case")
+    return {"deleted": 1}
+
+
+@app.get("/api/watcher")
+def watcher_overview():
+    return watcher.overview()
+
+
+@app.post("/api/watcher/{company_id}")
+def watcher_start(company_id: str):
+    try:
+        return watcher.start(company_id)
+    except WatchUnavailable as exc:
+        raise HTTPException(400, str(exc))
+
+
+@app.delete("/api/watcher/{company_id}")
+def watcher_stop(company_id: str):
+    watcher.stop(company_id)
+    return {"stopped": company_id}
+
+
+@app.post("/api/watcher/{company_id}/check")
+def watcher_check(company_id: str):
+    try:
+        return watcher.check_now(company_id)
+    except KeyError:
+        raise HTTPException(404, "not watching this company")
+    except WatchUnavailable as exc:
+        raise HTTPException(400, str(exc))
 
 
 @app.get("/api/cases/{case_id}")

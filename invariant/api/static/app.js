@@ -103,10 +103,11 @@ function parse(){const h=location.hash||'#/';
   const m=h.match(/^#\/case\/([\w-]+)/);if(m)return {name:'case',id:m[1]};
   if(h.startsWith('#/quote'))return {name:'quote',params:new URLSearchParams(h.split('?')[1]||'')};
   if(h.startsWith('#/cases'))return {name:'cases'};
+  if(h.startsWith('#/watch'))return {name:'watch'};
   return {name:'overview'}}
 async function route(){const r=parse();if(!r)return;ROUTE=r;closeDrawer();window.scrollTo({top:0});
   document.querySelectorAll('#links a').forEach(a=>a.classList.toggle('on',a.dataset.r===(r.name==='case'?'cases':r.name)));
-  if(r.name==='overview')return pageOverview();if(r.name==='quote')return pageQuote(r.params);if(r.name==='cases')return pageCases();if(r.name==='case')return pageCase(r.id)}
+  if(r.name==='overview')return pageOverview();if(r.name==='quote')return pageQuote(r.params);if(r.name==='cases')return pageCases();if(r.name==='watch')return pageWatch();if(r.name==='case')return pageCase(r.id)}
 window.addEventListener('hashchange',route);
 
 // ======================================================================= OVERVIEW (command center)
@@ -165,23 +166,29 @@ function donut(parts,total){const R=52,C=2*Math.PI*R;let off=0;
    <div class="legend2">${parts.map(([k,l,n])=>`<div><i style="background:${OUTC[k]}"></i>${l}<b>${n}</b><span class="muted xs" style="width:40px;text-align:right">${total?Math.round(n/total*100):0}%</span></div>`).join('')}</div></div>`}
 const AVC=['#4d8dff','#29c7b8','#f5ae42','#8b9cff','#25c685','#f06a73'];
 const COVER_SHORT={fire:'Fire',wc:'WC',fire_wc:'Fire + WC',marine:'Marine',liability:'Liability'};
-function caseTable(rows,compact){return `<div style="overflow-x:auto"><table><thead><tr><th>Applicant</th><th>Cover</th><th>Decision</th><th style="text-align:right">Premium</th>${compact?'':'<th>Created</th>'}</tr></thead><tbody>${rows.map(r=>{
+function caseTable(rows,compact){return `<div style="overflow-x:auto"><table><thead><tr><th>Applicant</th><th>Cover</th><th>Decision</th><th style="text-align:right">Premium</th>${compact?'':'<th>Created</th><th></th>'}</tr></thead><tbody>${rows.map(r=>{
   const nm=r.company||'Unnamed applicant';const ini=nm.split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();const col=AVC[[...r.case_id].reduce((a,c)=>a+c.charCodeAt(0),0)%AVC.length];
   return `<tr class="click" data-open="${esc(r.case_id)}"><td><div class="co"><div class="av" style="background:${col}">${esc(ini)}</div><div style="min-width:0"><b>${esc(nm)}</b><span>${esc(r.prompt)}</span></div></div></td>
    <td class="small" style="white-space:nowrap">${esc((compact?COVER_SHORT:COVER)[r.cover_type]||r.cover_type||'—')}</td><td>${r.outcome?`<span class="badge b-${OUTK[r.outcome]}"><i></i>${esc(OUT[r.outcome])}</span>${r.hold_reason?`<div class="xs muted" style="margin-top:3px">${esc(r.hold_reason.replace(/_/g,' '))}</div>`:''}`:'<span class="badge b-neutral">Not finished</span>'}</td>
-   <td class="num" style="text-align:right;font-weight:650">${r.premium_inr!=null?inr(r.premium_inr):'<span class="muted">—</span>'}</td>${compact?'':`<td class="small muted" style="white-space:nowrap">${esc(when(r.created))}</td>`}</tr>`}).join('')}</tbody></table></div>`}
-document.addEventListener('click',e=>{const tr=e.target.closest('[data-open]');if(tr)location.hash='#/case/'+tr.dataset.open});
+   <td class="num" style="text-align:right;font-weight:650">${r.premium_inr!=null?inr(r.premium_inr):'<span class="muted">—</span>'}</td>${compact?'':`<td class="small muted" style="white-space:nowrap">${esc(when(r.created))}</td><td><button class="del-x" data-del="${esc(r.case_id)}" title="Delete this case" aria-label="Delete this case">✕</button></td>`}</tr>`}).join('')}</tbody></table></div>`}
+document.addEventListener('click',e=>{const d=e.target.closest('[data-del]');if(d){e.stopPropagation();deleteCase(d.dataset.del);return}
+  const tr=e.target.closest('[data-open]');if(tr)location.hash='#/case/'+tr.dataset.open});
+async function send(method,path){const r=await fetch(path,{method});if(!r.ok){let m=await r.text();try{m=JSON.parse(m).detail||m}catch(e){}throw new Error(m)}return r.json()}
+async function deleteCase(id){if(!confirm('Delete this case and its history? This cannot be undone.'))return;
+  try{await send('DELETE','/api/cases/'+id);toast('Case deleted');route()}catch(e){toast(e.message)}}
 
 // ======================================================================= CASES
 async function pageCases(){
   $('#app').innerHTML=`<div class="page"><div class="case-head"><div><div class="eyebrow">Underwriting</div><h1>Cases</h1><div class="meta">Every application and its decision. Click a row to open the workspace.</div></div>
-   <div class="act"><a class="btn primary" href="#/quote">${ICON.plus}New quote</a></div></div>
+   <div class="act"><button class="btn danger" id="delAll">Delete all</button><a class="btn primary" href="#/quote">${ICON.plus}New quote</a></div></div>
    <div class="card"><div class="filters"><input class="in" id="q" placeholder="Search company or request…">
      <div class="seg" id="fOut"><button class="on" data-v="">All</button><button data-v="quote">Quote</button><button data-v="refer">Refer</button><button data-v="decline">Decline</button><button data-v="hold">Hold</button></div>
      <div class="seg" id="fDate"><button class="on" data-v="0">Any time</button><button data-v="1">24 h</button><button data-v="7">7 days</button></div>
      <span class="small muted" id="cnt" style="margin-left:auto"></span></div><div id="tbl"><div class="cb"><div class="bar-ind"></div></div></div></div></div>`;
   let rows=[];try{rows=await api('/api/dashboard')}catch(e){$('#tbl').innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
   if(ROUTE.name!=='cases')return;
+  $('#delAll').onclick=async()=>{if(!confirm('Delete every case? This cannot be undone.'))return;
+    try{const r=await send('DELETE','/api/cases');toast(`Deleted ${r.deleted} case${r.deleted===1?'':'s'}`);route()}catch(e){toast(e.message)}};
   const st={q:'',o:'',d:0};
   const draw=()=>{const now=Date.now();const f=rows.filter(r=>(!st.o||r.outcome===st.o)&&(!st.d||now-new Date(r.created).getTime()<st.d*864e5)&&
      (!st.q||(r.company||'').toLowerCase().includes(st.q)||(r.prompt||'').toLowerCase().includes(st.q)));
@@ -190,6 +197,39 @@ async function pageCases(){
   for(const [id,key] of [['#fOut','o'],['#fDate','d']])$(id).onclick=e=>{const b=e.target.closest('button');if(!b)return;$(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));st[key]=key==='d'?+b.dataset.v:b.dataset.v;draw()};
   draw();
 }
+
+// ======================================================================= WATCHER (demo companies, offline)
+const WFIELD={headcount:'Staff',sites:'Locations',hazardous_activity:'Job ads',adverse_event:'News'};
+function wval(v){if(v==null)return '—';if(Array.isArray(v))return v.join(', ');if(typeof v==='object')return v.job_title||v.title||v.activity||JSON.stringify(v);return typeof v==='number'?v.toLocaleString('en-IN'):String(v)}
+function watchCard(c){const w=c.watch;
+  const head=`<div class="wc-h"><b>${esc(c.name)}</b><span class="small muted">${esc(c.headquarters||'')}</span>
+   ${w?'<span class="badge b-good"><i></i>Watching</span>':'<span class="badge b-neutral">Not watched</span>'}
+   <div class="act">${w?`<button class="btn sm primary" data-wcheck="${esc(c.company_id)}">Check now</button><button class="btn sm" data-wstop="${esc(c.company_id)}">Stop</button>`:`<button class="btn sm primary" data-wstart="${esc(c.company_id)}">Watch</button>`}</div></div>`;
+  const meta=`<div class="wc-meta">On record: ${esc(c.industry||'—')} · ${c.headcount!=null?esc(wval(c.headcount))+' staff':'staff unknown'} · ${esc(c.domain||'')} · Source: Crustdata company enrich${w?` · watching since ${esc(when(w.started))}`:''}</div>`;
+  if(!w)return `<div class="wc">${head}${meta}</div>`;
+  const items=[...w.checks].reverse().map(k=>k.changes.length?k.changes.map(ch=>{const s=ch.fact.source||{};
+      return `<li class="chg"><span class="when">${esc(when(k.checked))}</span><span class="what"><span><span class="badge b-warn">${esc(WFIELD[ch.field]||fname(ch.field))}</span> ${esc(ch.text)}</span>
+      <span class="small">${ch.before==null?`New: <b>${esc(wval(ch.after))}</b>`:`Was <b>${esc(wval(ch.before))}</b> → now <b>${esc(wval(ch.after))}</b>`}</span>
+      <span class="src">Source: ${esc(s.what||'')} · “${esc(s.quote||'')}”${s.dated?` · dated ${esc(s.dated)}`:' · date unknown'}${s.url?` · <a href="${esc(s.url)}" target="_blank" rel="noopener">article</a>`:''}</span></span></li>`}).join('')
+    :`<li><span class="when">${esc(when(k.checked))}</span><span class="what">No change on record since the last check.</span></li>`).join('');
+  return `<div class="wc">${head}${meta}<ul class="wlog">${items||'<li><span class="what">Watching. Press <b>Check now</b> to re-check the record.</span></li>'}</ul></div>`}
+async function pageWatch(){
+  $('#app').innerHTML=`<div class="page"><div class="case-head"><div><div class="eyebrow">Monitoring</div><h1>Watcher</h1><div class="meta">Watch a company and we re-check its public record. Each change shows what it was, what it is now, and where it came from.</div></div>
+   <div class="act"><button class="btn" id="wRefresh">Refresh</button></div></div>
+   <div class="card" id="watchList"><div class="cb"><div class="bar-ind"></div></div></div></div>`;
+  $('#wRefresh').onclick=()=>drawWatch();
+  $('#watchList').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
+    try{if(b.dataset.wstart){await api('/api/watcher/'+b.dataset.wstart,{});toast('Watching. Today\'s record is saved as the starting point.')}
+      else if(b.dataset.wcheck){const w=await api(`/api/watcher/${b.dataset.wcheck}/check`,{});const n=w.checks[w.checks.length-1].changes.length;toast(n?`${n} change${n>1?'s':''} found on record`:'No change on record')}
+      else if(b.dataset.wstop){await send('DELETE','/api/watcher/'+b.dataset.wstop);toast('Stopped watching')}
+      else return;
+      drawWatch()}catch(err){toast(err.message)}});
+  drawWatch()}
+async function drawWatch(){const el=$('#watchList');if(!el)return;
+  try{const o=await api('/api/watcher');if(ROUTE.name!=='watch')return;
+    el.innerHTML=!o.available?'<div class="empty">The watcher works on the demo companies only. Start the app in offline mode to use it.</div>'
+      :o.companies.length?o.companies.map(watchCard).join(''):'<div class="empty">No demo companies found.</div>'}
+  catch(e){el.innerHTML=`<div class="empty">${esc(e.message)}</div>`}}
 
 // ======================================================================= QUOTE APPLICATION
 const STEPS=[
