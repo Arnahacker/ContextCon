@@ -113,6 +113,7 @@ function render(){
  $('#result').classList.remove('hidden');const d=CASE.decision||{};const r=CASE.resolution||{};
  let res=`<h2>Company</h2>`;
  if(r.status==='resolved')res+=`<div class="row"><b>${esc(r.name)}</b><span class="mono">${esc(r.domain||'')} · crustdata id ${esc(r.company_id)}</span></div>`;
+ if(CASE.reader)res+=`<div class="note">Prompt read by ${CASE.reader==='rules'?'rules (no LLM)':'Claude'}: the reader only fills the form; code decides.</div>`;
  else if(r.status==='ambiguous')res+=`<div>Two companies match. <b>Not guessing</b>, which one?</div><div class="row" style="margin-top:6px">${(r.candidates||[]).map(c=>`<button class="ghost" onclick="choose('${esc(c.domain)}')">${esc(c.name)} · ${esc(c.location||c.domain)} (${c.confidence})</button>`).join('')}</div>`;
  else res+=`<div>${esc(r.status)}</div>`;
  if(CASE.duplicate_of)res+=`<div class="note">Same request as case ${esc(CASE.duplicate_of)}: one record, one decision, no second quote.</div>`;

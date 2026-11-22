@@ -34,7 +34,7 @@ def _neutralise(facts: list[Fact], f: Fact) -> tuple[list[Fact], str]:
         return rest + [f.model_copy(update={"value": limit, "status": "consistent_unconfirmed"})], \
             f"record headcount at or below {limit}"
     if f.field == "sites":
-        return rest, f"no undeclared site at {f.value}"
+        return rest, f"no undeclared site at {v.get('city', f.value) if v else f.value}"
     if f.field == "hazardous_activity":
         return rest, f"no {v.get('activity', 'hazardous activity')} at the insured"
     if f.field == "adverse_event":

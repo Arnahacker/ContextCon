@@ -10,7 +10,7 @@ from typing import Optional
 
 from invariant.contracts import FieldReading
 from invariant.read.declared import canonical_quote
-from invariant.read.llm import call_tool, nullable
+from invariant.read.llm import LLMUnavailable, call_tool, log, nullable
 from invariant.read.normalize import (
     _GLUE, _HUNDRED, _SCALES, _UNITS, _parse_single, _tokens, indian_format, looks_like_injection, normalize_cover_type, normalize_industry,
     parse_range, short_inr,
@@ -146,7 +146,29 @@ def _value_reading(field: str, value: str) -> FieldReading:
     return FieldReading(field=field, kind="value", value=v, display=f"I read that as: {v}")
 
 
+def _rules_answer(field: str, reply: str) -> FieldReading:
+    """No LLM: take one clear number for numeric fields (even inside prose), else unknown."""
+    # Hindi number words collide with ordinary words ("why do you ask"), so in prose we only
+    # trust digits or a lakh/crore-style scale word.
+    clear = _is_pure_number(reply) or bool(re.search(r"\d", reply)) or \
+        any(t in _SCALES and len(t) > 2 for t in _tokens(reply))
+    if field in NUMERIC_FIELDS and clear:
+        got = _number_reading(field, reply)
+        if got:
+            return got
+    return FieldReading(field=field, kind="unknown",
+                        display=f"I could not read the {_label(field)} from that reply automatically; "
+                                "treating it as not known. Please rephrase as a plain value to change it.")
+
+
+# "claude" when the last read_answer used the LLM, "rules" when it fell back, None when the
+# deterministic path answered without any LLM call.
+last_reader: Optional[str] = None
+
+
 def read_answer(field: str, question: str, reply: str, options: Optional[list[str]] = None) -> FieldReading:
+    global last_reader
+    last_reader = None
     reply = (reply or "").strip()
     if not reply or _UNKNOWN.search(reply):
         return _unknown(field)
@@ -164,11 +186,17 @@ def read_answer(field: str, question: str, reply: str, options: Optional[list[st
         got = _number_reading(field, reply)
         if got:
             return got
-    raw = call_tool(kind="answer", index_key=f"{field}: {reply}", prompt_version=PROMPT_VERSION,
-                    system=SYSTEM, tool=TOOL,
-                    user_text=f"Field: {field}\nQuestion: {question}\n"
-                              + (f"Options: {', '.join(options)}\n" if options else "")
-                              + f"Reply: {reply}")
+    try:
+        raw = call_tool(kind="answer", index_key=f"{field}: {reply}", prompt_version=PROMPT_VERSION,
+                        system=SYSTEM, tool=TOOL,
+                        user_text=f"Field: {field}\nQuestion: {question}\n"
+                                  + (f"Options: {', '.join(options)}\n" if options else "")
+                                  + f"Reply: {reply}")
+    except LLMUnavailable as exc:
+        log.warning("read: answer %s by rules (%s)", field, exc)
+        last_reader = "rules"
+        return _rules_answer(field, reply)
+    last_reader = "claude"
     if raw.get("kind") == "unknown":
         return _unknown(field)
     if raw.get("kind") != "value" or not raw.get("value"):

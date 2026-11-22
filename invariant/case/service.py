@@ -14,7 +14,7 @@ from invariant.decide.engine import decide
 from invariant.evidence.gather import gather
 from invariant.read.answer import followup_fact, read_answer
 from invariant.read.declared import declared_facts
-from invariant.read.extract import extract
+from invariant.read import extract_with_reader
 from invariant.shapes import Decision, Fact, Form
 
 # ------------------------------------------------------------------ state
@@ -88,8 +88,9 @@ def resume(case_id: str) -> Decision:
     """Run whatever steps are missing. Safe to call repeatedly."""
     if store.last(case_id, "form") is None:
         prompt = store.events(case_id)[0]["payload"]["text"]
-        form = extract(prompt)
+        form, reader = extract_with_reader(prompt)
         store.append(case_id, "form", form.model_dump(mode="json"))
+        store.append(case_id, "reader", {"reader": reader})
         if form.injection_attempt:
             store.append(case_id, "finding", {"kind": "injection_attempt"})
     if store.last(case_id, "evidence") is None:
@@ -173,6 +174,7 @@ def view(case_id: str) -> dict:
         "calls": [c.model_dump(mode="json") for c in ev.calls] if ev else [],
         "decision": d,
         "pending": list(st["pending"].values()),
+        "reader": (store.last(case_id, "reader") or {}).get("reader"),
         "duplicate_of": _duplicate_of(case_id, d),
         "events": [{"seq": e["seq"], "kind": e["kind"], "at": e["at"]} for e in store.events(case_id)],
     }

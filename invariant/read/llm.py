@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import sqlite3
 from pathlib import Path
@@ -24,6 +25,16 @@ CACHE_DB = ROOT / "data" / "llm_cache.sqlite"
 # tool_choice auto + strict schema + a prompt that requires the tool, and rely on the
 # request-hash cache (plus the deterministic normalizer) for repeatability.
 MODEL = os.environ.get("INVARIANT_LLM_MODEL", "claude-opus-5-5")
+TIMEOUT_S = float(os.environ.get("INVARIANT_LLM_TIMEOUT", "30"))
+
+log = logging.getLogger("invariant.read")
+
+# where the last call_tool answer came from: "fixture" | "cache" | "claude"
+last_source: str | None = None
+
+
+class LLMUnavailable(LookupError):
+    """No fixture offline, or the live call failed. Callers fall back to rules."""
 
 
 def offline() -> bool:
@@ -49,21 +60,31 @@ def _db() -> sqlite3.Connection:
 def call_tool(*, kind: str, index_key: str, prompt_version: str, system: str, tool: dict,
               user_text: str) -> dict[str, Any]:
     """Return the raw tool input for one request. `kind` + `index_key` address index.json."""
+    global last_source
     key = request_hash(prompt_version, user_text)
     fixture = FIXTURES / f"{key}.json"
     if offline():
+        last_source = "fixture"
         if fixture.exists():
             return json.loads(fixture.read_text())
         idx = _index().get(kind, {})
         if index_key in idx:
             return idx[index_key]
-        raise LookupError(f"offline: no LLM fixture for {kind} {index_key!r} (hash {key})")
+        raise LLMUnavailable(f"offline: no LLM fixture for {kind} {index_key!r} (hash {key})")
 
     with _db() as con:
         row = con.execute("SELECT response FROM llm_cache WHERE key = ?", (key,)).fetchone()
     if row:
+        last_source = "cache"
         return json.loads(row[0])
-    out = _live(system=system, tool=tool, user_text=user_text)
+    import anthropic
+
+    try:
+        out = _live(system=system, tool=tool, user_text=user_text)
+    except (anthropic.APIConnectionError, anthropic.APIStatusError, RuntimeError) as exc:
+        # APIConnectionError covers timeouts; APIStatusError covers 4xx/5xx incl. auth
+        raise LLMUnavailable(f"live LLM call failed for {kind}: {type(exc).__name__}: {exc}") from exc
+    last_source = "claude"
     with _db() as con:
         con.execute("INSERT OR REPLACE INTO llm_cache VALUES (?, ?, ?)", (key, MODEL, json.dumps(out)))
     FIXTURES.mkdir(parents=True, exist_ok=True)
@@ -74,7 +95,7 @@ def call_tool(*, kind: str, index_key: str, prompt_version: str, system: str, to
 def _live(*, system: str, tool: dict, user_text: str) -> dict[str, Any]:
     import anthropic  # imported lazily so offline runs never need the SDK configured
 
-    client = anthropic.Anthropic()
+    client = anthropic.Anthropic(timeout=TIMEOUT_S, max_retries=1)
     messages = [{"role": "user", "content": user_text}]
     for _ in range(2):  # tool_choice auto does not guarantee a call: re-ask once
         resp = client.beta.messages.create(

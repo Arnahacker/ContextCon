@@ -82,6 +82,14 @@ def test_declared_facts_for_clean_case():
     assert "export_countries" not in facts
 
 
-def test_offline_missing_fixture_raises():
-    with pytest.raises(LookupError):
-        extract("A totally new prompt with no fixture.")
+def test_offline_missing_fixture_falls_back_to_rules():
+    import sys
+
+    extract_mod = sys.modules["invariant.read.extract"]
+    from invariant.read.extract import extract_with_reader
+
+    form, reader = extract_with_reader("A totally new prompt with no fixture.")
+    assert reader == "rules" and extract_mod.last_reader == "rules"
+    assert form.company_name is None
+    _, reader = extract_with_reader(CASES[1]["prompt"])
+    assert reader == "claude" and extract_mod.last_reader == "claude"

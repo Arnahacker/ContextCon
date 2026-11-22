@@ -1,8 +1,12 @@
 """Broker text -> Form. One LLM tool call fills raw fields; the normalizer makes them canonical."""
 from __future__ import annotations
 
-from invariant.read.llm import call_tool, nullable
+from typing import Literal
+
+from invariant.read import llm
+from invariant.read.llm import LLMUnavailable, call_tool, log, nullable
 from invariant.read.normalize import normalize_form
+from invariant.read.rules_extract import rules_extract
 from invariant.shapes import Form
 
 PROMPT_VERSION = "extract-v1"
@@ -51,10 +55,30 @@ TOOL = {
 }
 
 
-def extract_raw(text: str) -> dict:
-    return call_tool(kind="extract", index_key=text, prompt_version=PROMPT_VERSION,
-                     system=SYSTEM, tool=TOOL, user_text=text)
+Reader = Literal["claude", "rules"]
+# which reader produced the most recent Form ("read by Claude" / "read by rules").
+# Read it as `invariant.read.extract.last_reader` (not via `from ... import`), or use extract_with_reader.
+last_reader: Reader | None = None
+
+
+def extract_raw(text: str) -> tuple[dict, Reader]:
+    """Claude's tool input (live, cached or fixture); rule-based reader if that is unavailable."""
+    try:
+        raw = call_tool(kind="extract", index_key=text, prompt_version=PROMPT_VERSION,
+                        system=SYSTEM, tool=TOOL, user_text=text)
+        log.info("read: extract by claude (%s)", llm.last_source)
+        return raw, "claude"
+    except LLMUnavailable as exc:
+        log.warning("read: extract by rules (%s)", exc)
+        return rules_extract(text), "rules"
+
+
+def extract_with_reader(text: str) -> tuple[Form, Reader]:
+    global last_reader
+    raw, reader = extract_raw(text)
+    last_reader = reader
+    return normalize_form(raw, text=text), reader
 
 
 def extract(text: str) -> Form:
-    return normalize_form(extract_raw(text), text=text)
+    return extract_with_reader(text)[0]
