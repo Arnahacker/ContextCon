@@ -1,0 +1,45 @@
+{
+  "job_listings": [
+    {
+      "job_details": {
+        "title": "Tannery Operator - Unnao",
+        "url": "https://jobs.example/kanpur_hide/1"
+      },
+      "location": {
+        "raw": "Unnao, Uttar Pradesh",
+        "city": "Unnao"
+      },
+      "metadata": {
+        "date_added": "2026-10-02"
+      }
+    },
+    {
+      "job_details": {
+        "title": "Chrome Tanning Supervisor",
+        "url": "https://jobs.example/kanpur_hide/2"
+      },
+      "location": {
+        "raw": "Kanpur, Uttar Pradesh",
+        "city": "Kanpur"
+      },
+      "metadata": {
+        "date_added": "2026-09-15"
+      }
+    },
+    {
+      "job_details": {
+        "title": "Export Documentation Executive",
+        "url": "https://jobs.example/kanpur_hide/3"
+      },
+      "location": {
+        "raw": "Kanpur, Uttar Pradesh",
+        "city": "Kanpur"
+      },
+      "metadata": {
+        "date_added": "2026-08-20"
+      }
+    }
+  ],
+  "next_cursor": null,
+  "total_count": 3
+}

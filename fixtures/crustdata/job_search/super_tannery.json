@@ -1,0 +1,45 @@
+{
+  "job_listings": [
+    {
+      "job_details": {
+        "title": "SAFETY SHOES QUALITY PASSER",
+        "url": "https://in.indeed.com/viewjob?jk=1e80f60f6944afb2"
+      },
+      "location": {
+        "raw": "Unnao, Uttar Pradesh",
+        "city": "Unnao"
+      },
+      "metadata": {
+        "date_added": "2026-11-19T12:19:09"
+      }
+    },
+    {
+      "job_details": {
+        "title": "Account Executive",
+        "url": "https://in.indeed.com/viewjob?jk=88de598141f25a8f"
+      },
+      "location": {
+        "raw": "Unnao, Uttar Pradesh",
+        "city": "Unnao"
+      },
+      "metadata": {
+        "date_added": "2026-11-13T10:34:31"
+      }
+    },
+    {
+      "job_details": {
+        "title": "Junior Accountant",
+        "url": "https://in.indeed.com/viewjob?jk=2b5480585a84e28c"
+      },
+      "location": {
+        "raw": "Unnao, Uttar Pradesh",
+        "city": "Unnao"
+      },
+      "metadata": {
+        "date_added": "2026-10-19T07:17:08"
+      }
+    }
+  ],
+  "next_cursor": null,
+  "total_count": 3
+}

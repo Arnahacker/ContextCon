@@ -1,0 +1,45 @@
+{
+  "job_listings": [
+    {
+      "job_details": {
+        "title": "Boiler Operator (Night Shift)",
+        "url": "https://jobs.example/stitchline/1"
+      },
+      "location": {
+        "raw": "Tiruppur, Tamil Nadu",
+        "city": "Tiruppur"
+      },
+      "metadata": {
+        "date_added": "2026-10-20"
+      }
+    },
+    {
+      "job_details": {
+        "title": "Dyeing Machine Operator",
+        "url": "https://jobs.example/stitchline/2"
+      },
+      "location": {
+        "raw": "Tiruppur, Tamil Nadu",
+        "city": "Tiruppur"
+      },
+      "metadata": {
+        "date_added": "2026-09-28"
+      }
+    },
+    {
+      "job_details": {
+        "title": "Tailor",
+        "url": "https://jobs.example/stitchline/3"
+      },
+      "location": {
+        "raw": "Tiruppur, Tamil Nadu",
+        "city": "Tiruppur"
+      },
+      "metadata": {
+        "date_added": "2026-09-05"
+      }
+    }
+  ],
+  "next_cursor": null,
+  "total_count": 3
+}

@@ -1,0 +1,752 @@
+[
+  {
+    "matched_on": "Super Tannery",
+    "match_type": "name",
+    "matches": [
+      {
+        "confidence_score": 0.8,
+        "company_data": {
+          "crustdata_company_id": 4889,
+          "basic_info": {
+            "name": "Super Tannery Limited",
+            "crustdata_company_id": 4889,
+            "primary_domain": "supertannery.com",
+            "all_domains": [
+              "supertannery.com"
+            ],
+            "website": "http://www.supertannery.com",
+            "professional_network_url": "https://www.linkedin.com/company/super-tannery-limited",
+            "professional_network_id": "1254805",
+            "profile_name": "Super Tannery Limited",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/9ebe6f9ad29726604a01ea6e251b7f532c0e793321b2fda4badbb95ff313f765.jpg",
+            "description": "Safety footwear Manufacturing and Exporting Company",
+            "company_type": "Public Company",
+            "year_founded": 1953,
+            "employee_count_range": "201-500",
+            "markets": [
+              "BSE"
+            ],
+            "industries": [
+              "Manufacturing"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.8,
+        "company_data": {
+          "crustdata_company_id": 15601524,
+          "basic_info": {
+            "name": "Super Tannery Ltd - India",
+            "crustdata_company_id": 15601524,
+            "primary_domain": null,
+            "all_domains": [],
+            "website": null,
+            "professional_network_url": "https://www.linkedin.com/company/super-tannery-ltd---india",
+            "professional_network_id": "7856021",
+            "profile_name": "Super Tannery Ltd - India",
+            "logo_permalink": null,
+            "description": "Super Tannery Ltd - India is a computer software company based out of India.",
+            "company_type": null,
+            "year_founded": null,
+            "employee_count_range": null,
+            "markets": [],
+            "industries": [
+              "Software Development",
+              "Technology, Information and Internet",
+              "Technology, Information and Media"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.8,
+        "company_data": {
+          "crustdata_company_id": 64883300,
+          "basic_info": {
+            "name": "SUPER TANNERY (U.K.) LIMITED",
+            "crustdata_company_id": 64883300,
+            "primary_domain": null,
+            "all_domains": [],
+            "website": null,
+            "professional_network_url": "https://www.linkedin.com/company/super-tannery-u.k.-limited",
+            "professional_network_id": "21083942",
+            "profile_name": "SUPER TANNERY (U.K.) LIMITED",
+            "logo_permalink": null,
+            "description": "SUPER TANNERY (U.K.) LIMITED is a textiles company based out of 29 COLUMBINE ROAD HAMILTON, LEICESTER, United Kingdom.",
+            "company_type": null,
+            "year_founded": null,
+            "employee_count_range": null,
+            "markets": [],
+            "industries": [
+              "Textile Manufacturing",
+              "Manufacturing"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.8,
+        "company_data": {
+          "crustdata_company_id": 14535628,
+          "basic_info": {
+            "name": "Super Tannery Limited Fashion Shoe",
+            "crustdata_company_id": 14535628,
+            "primary_domain": "supertannery.com",
+            "all_domains": [
+              "supertannery.com"
+            ],
+            "website": "http://www.supertannery.com",
+            "professional_network_url": "https://www.linkedin.com/company/super-tannery-limited-fashion-shoe",
+            "professional_network_id": "34176670",
+            "profile_name": "Super Tannery Limited Fashion Shoe",
+            "logo_permalink": null,
+            "description": "Super Tannery Limited is the worlds leading Buffalo leather tannery and specializes in the manufacture of high quality leather for Automotive Furniture Upholstery Safety Lifestyle Footwear Bags Belts Sporting Goods and Equestrian equipment.Sensing the dynamics of the world markets the company expanded and diversified into the manufacturing of Safety Lifestyle Footwear Bags and Belts and produces high quality products for leading brands of the world.Set up in 1953 Super Tannery is the oldest tannery in Northern India and enjoys a high reputation in the world markets and has established an important position for itself in the global supply chain of leather and allied products.",
+            "company_type": null,
+            "year_founded": null,
+            "employee_count_range": "myself only",
+            "markets": [],
+            "industries": [
+              "Appliances, Electrical, and Electronics Manufacturing",
+              "Manufacturing"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.8,
+        "company_data": {
+          "crustdata_company_id": 24336369,
+          "basic_info": {
+            "name": "Super Tannery India(Export House) Kanpur",
+            "crustdata_company_id": 24336369,
+            "primary_domain": null,
+            "all_domains": [],
+            "website": null,
+            "professional_network_url": "https://www.linkedin.com/company/super-tannery-india-export-house-kanpur",
+            "professional_network_id": "33645140",
+            "profile_name": "Super Tannery India(Export House) Kanpur",
+            "logo_permalink": null,
+            "description": "Super Tannery India(Export House) Kanpur is a consumer services company based out of 135 Bharat Patroleam Appatmant Sector - 62, Noida, Uttar Pradesh, India.",
+            "company_type": null,
+            "year_founded": null,
+            "employee_count_range": "11-50",
+            "markets": [],
+            "industries": [
+              "Consumer Services"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 924776,
+          "basic_info": {
+            "name": "Publix Super Markets",
+            "crustdata_company_id": 924776,
+            "primary_domain": "publix.com",
+            "all_domains": [
+              "publix.com"
+            ],
+            "website": "https://corporate.publix.com/",
+            "professional_network_url": "https://www.linkedin.com/company/publix-super-markets",
+            "professional_network_id": "7242",
+            "profile_name": "Publix Super Markets",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/6bf6461f7e982f180c555729c1cab167155a977e243babfe5a6f324eacc3f493.jpg",
+            "description": "Founded in 1930, Publix Super Markets is the largest and fastest-growing employee-owned supermarket chain in the United States. Publix employs over 200,000 associates. We are privately-owned, hold no long-term debt, have avoided layoffs, and continue to grow year after year. Publix and our associates excel in community involvement, volunteerism and environmental sustainability.  Having an inclusive working environment makes our company—and our community—better. We value the fresh ideas and unique perspectives that each associate provides. We make it a priority to employ and work with qualified and talented people, which includes associates from many backgrounds, cultures, abilities, and ethnicities.",
+            "company_type": "Privately Held",
+            "year_founded": 1930,
+            "employee_count_range": "10001+",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Retail"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 924773,
+          "basic_info": {
+            "name": "Super",
+            "crustdata_company_id": 924773,
+            "primary_domain": "meetsuper.com",
+            "all_domains": [
+              "meetsuper.com"
+            ],
+            "website": "http://www.meetsuper.com",
+            "professional_network_url": "https://www.linkedin.com/company/meet-super",
+            "professional_network_id": "33279573",
+            "profile_name": "Super",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/77c86983887168419efae7840fe5a7c9db0e039fed31be057f409194be1b7b73.jpg",
+            "description": "We are the only creative, strategy and media center in Latin America founded by Latinos.The SuperTM family, led by its founding partners Damián Kepel, Sebas Yumatle, Mariano Mataloni, Rodrigo Diaz Aran, Andy Clar and Alvaro Yermoli is made up of over 380 talented members in 9 countries.Moreover, the SuperTM Woman division, led by founding partner Andy Clar, consists of interdisciplinary teams made up of 50 independent SuperTM Women in each country.We are headquartered in Buenos Aires and have offices in Miami, São Paulo, Lima, Mexico City, Santiago, Madrid, Bogotá and Montevideo, where we work with regional muscle and local knowledge. Across all countries we operate in, we are the same company—the same team, with same culture.At SuperTM, strategy and creativity is our game—and we build on these two pillars for every single thing we do. In order to measure and reach our goals, we dig deep into and work with Big and Small Data.Our audiovisual production branch, SuperTM Productora Audiovisual, was created to provide our clients with an immediate answer to their needs by combining the audiovisual formats of today with the innovations of tomorrow.And with SuperTM Media, our own performance-driven online and offline media agency, we make sure our client’s messages reach the right audience.",
+            "company_type": "Partnership",
+            "year_founded": 2018,
+            "employee_count_range": "201-500",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Advertising Services",
+              "Professional Services"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 18825095,
+          "basic_info": {
+            "name": "Super",
+            "crustdata_company_id": 18825095,
+            "primary_domain": "super.xyz",
+            "all_domains": [
+              "super.xyz"
+            ],
+            "website": "https://www.super.xyz/",
+            "professional_network_url": "https://www.linkedin.com/company/super-technologies-international",
+            "professional_network_id": "110628222",
+            "profile_name": "Super",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/0f778cd7ab07244339d4568fb3f8d38be8a19650fd4336019d37e2bb34f9294d.jpg",
+            "description": "We are Super Technologies, simply known as Super. A global technology company dedicated to building the future of entertainment and fan-centric experiences.With commercial markets in Brazil, Belgium, Poland, Romania, Greece and Serbia, our company has evolved from a leading sports betting and gaming operator into a diversified product and tech organization, gathering more than 5,000 dedicated people across our teams.Shaping the future of playAt Super, we are creating a unique entertainment ecosystem engaging millions of customers worldwide. Our product and technology teams in Amsterdam (the Netherlands), Madrid (Spain), Zagreb (Croatia), London (UK), and Bucharest (Romania) are building the playstack that will champion the future of play.Our ambitious growth strategy focuses on expanding across Europe and Latin America while delivering immersive customer experiences and creating lasting value for our customers, partners, and communities.Global recognition and standardsThe company’s long-term strategy is supported by world-class investors. In 2019, Blackstone, the world’s largest alternative asset manager, made a strategic minority investment of €175 million. In 2025, we strengthened our financial position through a €1.3 billion refinancing agreement, reinforcing our partnership with Blackstone and enabling accelerated global expansion.Super is committed to the highest standards of compliance, safety, and responsibility. As such, we are active members of the International Betting Integrity Association (IBIA) and the European Gaming & Betting Association (EGBA).",
+            "company_type": "Privately Held",
+            "year_founded": null,
+            "employee_count_range": "1001-5000",
+            "markets": [],
+            "industries": [
+              "Entertainment Providers"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 6340173,
+          "basic_info": {
+            "name": "PT Lion Super Indo",
+            "crustdata_company_id": 6340173,
+            "primary_domain": "jobseeker.software",
+            "all_domains": [
+              "jobseeker.software"
+            ],
+            "website": "https://superindo.jobseeker.software/",
+            "professional_network_url": "https://www.linkedin.com/company/superindo",
+            "professional_network_id": "1104467",
+            "profile_name": "PT Lion Super Indo",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/5f80aabcaecf756c9ae0ea38330a52cd92c4f02cbfdec3d6f1b2631ae8f6dc39.jpg",
+            "description": "Sejak tahun 1997, Super Indo telah bertumbuh dan berkembang di Indonesia melalui kemitraan bersama Ahold Delhaize yang berasal dari Belanda dan Salim Group dari Indonesia. Didukung lebih dari 12,000 karyawan* yang terlatih, Super Indo berhasil menyediakan berbagai macam barang kebutuhan sehari-hari berkualitas tinggi dengan harga ekonomis.Super Indo selalu menjaga kesegaran dan kualitas produk dengan cara memilih produsen yang baik dan juga menetapkan prosedur operasi standar yang selalu kami pantau. Super Indo juga berkomitmen untuk mengembangkan ekonomi lokal dengan menjalin kemitraan dengan petani lokal dan memberdayakan Usaha Mikro, Kecil, dan Menengah (UMKM) yang menyuplai produk berkualitas di gerai Super Indo. Hal ini membuat Super Indo menjadi pilihan terbaik untuk berbelanja karena kami lebih segar, lebih hemat, dan lebih dekat.Kami percaya bahwa Super Indo tidak hanya memberikan pelayanan yang terbaik dan produk yang berkualitas tinggi, tetapi juga memberikan kontribusi positif bagi komunitas dan menjadi bagian masyarakat yang lebih baik. Hal ini tercermin dari rangkaian kegiatan rutin kami yang mempromosikan gaya hidup sehat, aksi filantropi, hingga zero waste management.Dengan pertumbuhan yang memprioritaskan keberlanjutan, Super Indo selalu membuka peluang kerja untuk masyarakat Indonesia. Super Indo percaya bahwa untuk menginspirasi masyarakat dalam mengembangkan potensi karir adalah membuat lingkungan kerja yang sehat dan inklusif. Seluruh karyawan di Super Indo berkomitmen untuk selalu belajar, berkembang, dan meraih kesuksesan dengan memelihara nilai-nilai Keberanian (Courage), Integritas (Integrity), Kerjasama (Teamwork), Kepedulian (Care), dan Humor (Humor).Ayo bergabung dan berkembang bersama keluarga besar PT Lion Super Indo!Better place to work, better place to shop, better neighbor.*as August 2026",
+            "company_type": "Privately Held",
+            "year_founded": 1997,
+            "employee_count_range": "10001+",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Retail"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 3314407,
+          "basic_info": {
+            "name": "Super Exito",
+            "crustdata_company_id": 3314407,
+            "primary_domain": "superexito.com.ec",
+            "all_domains": [
+              "superexito.com.ec"
+            ],
+            "website": "https://linktr.ee/superexito",
+            "professional_network_url": "https://www.linkedin.com/company/super-exito",
+            "professional_network_id": "6976298",
+            "profile_name": "Super Exito",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/ccdb07a69e02f057a48a3613a650a765b9678bd3a5f9c833b479009e51bac4fa.jpg",
+            "description": "34 años vistiendo a los Ecuatorianos.¡Super Éxito, Siempre en Familia! ⭐️",
+            "company_type": "Privately Held",
+            "year_founded": 1989,
+            "employee_count_range": "1001-5000",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Retail Apparel and Fashion",
+              "Retail"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 1276896,
+          "basic_info": {
+            "name": "Super-Pharm",
+            "crustdata_company_id": 1276896,
+            "primary_domain": "super-pharm.co.il",
+            "all_domains": [
+              "super-pharm.co.il"
+            ],
+            "website": "https://shop.super-pharm.co.il/",
+            "professional_network_url": "https://www.linkedin.com/company/super-pharm",
+            "professional_network_id": "122303",
+            "profile_name": "Super-Pharm",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/a18b090abb4fa47533799cde5b23ed7a2b9a06b1d76ef79f1c3242e2364bad90.jpg",
+            "description": "Super-Pharm is Israel's leading health, wellness, beauty and pharmacy retailer, with a nationwide network of over 300 stores, serving millions of customers every week.At our core, we are a pharmacy - providing trusted, professional healthcare services, alongside a leading beauty destination offering a diverse portfolio of international and local brands, including the largest K-beauty selection in Israel.Our stores deliver a full, one-stop omnichannel experience, with dedicated departments covering pharmacy, beauty, baby care, personal care, home care products and more.One of our greatest prides is our broad, constantly evolving assortment, bringing customers the hottest global and local brands and trends. This is complemented by a growing portfolio of private label products, developed with a focus on quality, innovation, and value.Super-Pharm Online complements our physical presence, serving millions of customers daily with their everyday pharmacy, health and beauty needs. Our fast-growing e-commerce marketplace takes it a step further - offering an extensive range of products from third party sellers, from everyday essentials to electronics, home appliances and beyond.Through our optical chain, Erroca by Super-Pharm, we extend our expertise with both standalone stores and in-store optical departments. Professional eye exams are conducted by certified optometrists, alongside a wide selection of leading eyewear brands.Our people are at the heart of everything we do. With thousands of store employees across the country, we are united by a shared commitment to the health, wellbeing and everyday lives of our customers. We are there for them in the moments that matter - from consulting a pharmacist to finding their next favorite product.Driven by a commitment to innovation, we continuously enhance the customer experience - integrating advanced technologies to deliver smarter, faster and more convenient services across every touchpoint.",
+            "company_type": "Privately Held",
+            "year_founded": 1978,
+            "employee_count_range": "10001+",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Retail"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 1544917,
+          "basic_info": {
+            "name": "Super Group",
+            "crustdata_company_id": 1544917,
+            "primary_domain": "supergroup.co.za",
+            "all_domains": [
+              "supergroup.co.za"
+            ],
+            "website": "http://www.supergroup.co.za",
+            "professional_network_url": "https://www.linkedin.com/company/super-group",
+            "professional_network_id": "19084",
+            "profile_name": "Super Group",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/a98841700b6c53b499b8a1831df7c60af101ab5a665e8cb6a7249f1d07e07303.jpg",
+            "description": "Super Group is a broad-based supply chain management business listed on the Johannesburg Securities Exchange. Super Group’s supply chain division provides a platform for the group’s core expertise and offerings. This expertise is applied into vertically integrated divisions covering vehicle dealerships and fleet management. Founded in 1986, Super Group has an international footprint and offers customers a comprehensive range of products and services.",
+            "company_type": "Public Company",
+            "year_founded": 1986,
+            "employee_count_range": "1001-5000",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Transportation, Logistics, Supply Chain and Storage"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 1934775,
+          "basic_info": {
+            "name": "Aware Super",
+            "crustdata_company_id": 1934775,
+            "primary_domain": "aware.com.au",
+            "all_domains": [
+              "aware.com.au"
+            ],
+            "website": "http://www.aware.com.au",
+            "professional_network_url": "https://www.linkedin.com/company/awaresuper",
+            "professional_network_id": "34677917",
+            "profile_name": "Aware Super",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/422ce5d1537467c4ffe7acca978d0475c7154561d730989e187d735b618e6edb.jpg",
+            "description": "We’re Aware Super, as one of Australia’s largest profit-for-members funds, we always remember whose money it is and whose future we’re looking after. With super advice and super returns, Aware Super is super helpful.^ Visit aware.com.au/awards for awards information.Read the PDS & TMD on our website.Information provided by Aware Super is believed to be accurate at the time of posting. To protect your interests, you should always make your own enquiries before acting.",
+            "company_type": "Public Company",
+            "year_founded": 1992,
+            "employee_count_range": "501-1000",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Financial Services"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 6329846,
+          "basic_info": {
+            "name": "Somos Super",
+            "crustdata_company_id": 6329846,
+            "primary_domain": "super.com.co",
+            "all_domains": [
+              "super.com.co"
+            ],
+            "website": "https://www.super.com.co/es",
+            "professional_network_url": "https://www.linkedin.com/company/somos-super",
+            "professional_network_id": "92921494",
+            "profile_name": "Somos Super",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/350587ac3bfe037fa7e6045102a6a169eccd9d397bd1c128348adad363ed1c6e.jpg",
+            "description": "Somos una organización de crecimiento einnovación, con más de 70 años, creandomágicos momentos de vida a través degolosinas sensacionales, en los que laalegría se viste de colores y los sueños tienendiferentes sabores. Nuestra política de Modelo Integrado de Gestión: Nos comprometemos a satisfacer a nuestros clientes y consumidores a través de golosinas sensacionales de excelente calidad, promovemos una cultura de prevención y gestión de riesgos relacionados con: el respeto integral de los derechos humanos; la salud ocupacional, la inocuidad, autenticidad y seguridad del producto, la conservación ambiental, la sostenibilidad y seguridad organizacional, guiados por una filosofía de mejoramiento continuo hacia el bienestar integral de nuestros grupos de interés, en el marco de la legislación aplicable y el logro de nuestros objetivos estratégicos.",
+            "company_type": "Privately Held",
+            "year_founded": 1948,
+            "employee_count_range": "1001-5000",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Food and Beverage Manufacturing",
+              "Manufacturing"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 1226190,
+          "basic_info": {
+            "name": "El Super",
+            "crustdata_company_id": 1226190,
+            "primary_domain": "elsupermarkets.com",
+            "all_domains": [
+              "grupochedraui.com.mx",
+              "elsupermarkets.com"
+            ],
+            "website": "http://www.elsupermarkets.com",
+            "professional_network_url": "https://www.linkedin.com/company/elsuper",
+            "professional_network_id": "920641",
+            "profile_name": "El Super",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/a3edf938d85b9093dfc433f084fc6154a9eb796fc8e5d3ee57d32dd6d96527ae.jpg",
+            "description": "Bodega Latina Corporation, doing business as El Super, entered the grocery retail marketplace with its first store in South Gate, California in June of 1997. Headquartered in Paramount, California, El Super is focused on offering the communities we serve exceptional service and quality products in clean, modern and welcoming stores. More importantly, we’re committed to offering our customers unbeatable prices on the products they love to cook for their families. You’ll see it in all our stores: “El Super Cuesta Menos.”El Super currently operates 63 stores in 13 counties throughout California, Arizona, Nevada, New Mexico, and Texas.",
+            "company_type": "Privately Held",
+            "year_founded": 1994,
+            "employee_count_range": "5001-10000",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Retail"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 1186536,
+          "basic_info": {
+            "name": "Super Bock Group",
+            "crustdata_company_id": 1186536,
+            "primary_domain": "superbockgroup.com",
+            "all_domains": [
+              "superbockgroup.com"
+            ],
+            "website": "http://www.superbockgroup.com",
+            "professional_network_url": "https://www.linkedin.com/company/superbockgroup",
+            "professional_network_id": "27122331",
+            "profile_name": "Super Bock Group",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/00feff2e2bbbf8a1eba1d9992308822c761a1e030f3f999c5ba46c2a1528d5f7.jpg",
+            "description": "Super Bock Group is the largest Portuguese company in the soft drinks sector. Our core business activity is focused on the beer, bottled water and cider business. We also have a presence in the wines and soft drinks segments. Our business is complemented by the production and marketing of malt and by tourism, through the management of the Vidago and Pedras Salgadas Recreational and Thermal Parks.With 1,300 employees, the Group operates in 15 locations in the north and south of the country, including:  centres producing beer, juices, soft drinks, and wine; water collection and bottling centres; sales and operations.The majority of the Group’s capital is Portuguese-owned, 56% by Grupo Viacer (BPI, Arsopi and Violas) and 44% by the Carlsberg Group. The culture of achievement that motivates us and the continuous investment in innovation and in people, as well as the quality we put into our brands and the service we provide is our modus operandi in the market.",
+            "company_type": "Privately Held",
+            "year_founded": 1890,
+            "employee_count_range": "1001-5000",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Food and Beverage Services",
+              "Accommodation and Food Services"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 6036351,
+          "basic_info": {
+            "name": "SpaceX Super Intelligence",
+            "crustdata_company_id": 6036351,
+            "primary_domain": "x.ai",
+            "all_domains": [
+              "x.ai"
+            ],
+            "website": "https://x.ai",
+            "professional_network_url": "https://www.linkedin.com/company/spacexsi",
+            "professional_network_id": "96151950",
+            "profile_name": "SpaceX Super Intelligence",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/969dc27e0b450e11fdd4f8dc19846abc4f02021244445df667c686181c0bb2af.jpg",
+            "description": "Understand the Universe. We are a team of AI technologists and business leaders on a mission to build AI systems that can help humanity understand the world better. https://x.ai/careers",
+            "company_type": "Privately Held",
+            "year_founded": 2023,
+            "employee_count_range": "1001-5000",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Technology, Information and Internet",
+              "Technology, Information and Media"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 1341696,
+          "basic_info": {
+            "name": "Super 8",
+            "crustdata_company_id": 1341696,
+            "primary_domain": "siouxfallssuper8.com",
+            "all_domains": [
+              "siouxfallssuper8.com"
+            ],
+            "website": "http://www.siouxfallssuper8.com",
+            "professional_network_url": "https://www.linkedin.com/company/super-8",
+            "professional_network_id": "948173",
+            "profile_name": "Super 8",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/54f716e2fd5f991e14f9ee7e72a1706137150e311ec44784e3be2bf3c679e8b9.jpg",
+            "description": "We are a newer property conveniently located just off of I-229 with easy on/off access. If traveling via the I-90 corridor you will find our location to be just what you need for easy accessibly to just about anything. We boast 56 well appointed guest rooms all of which include free wireless high speed internet, hair dryers, and coffee makers. Treat yourself to one of our jacuzzi or business suites. Our Jacuzzi Suites include all of the standard amenities plus a whirlpool tub, Iron and Board, microwave/fridge, sofa sleeper and recliner. Our business travelers will enjoy the additional space in our Business Suite. All Business Suites include a recliner, sofa sleeper, iron and board and microwave/fridge. Start your day off right with a complimentary deluxe continental breakfast. Pet Fee- 10.00 per night per pet.",
+            "company_type": "Partnership",
+            "year_founded": null,
+            "employee_count_range": "11-50",
+            "markets": [],
+            "industries": [
+              "Hospitality",
+              "Accommodation and Food Services"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 1844839,
+          "basic_info": {
+            "name": "Super C",
+            "crustdata_company_id": 1844839,
+            "primary_domain": "superc.ca",
+            "all_domains": [
+              "metro.ca",
+              "superc.ca"
+            ],
+            "website": "http://www.superc.ca/",
+            "professional_network_url": "https://www.linkedin.com/company/divison-super-c",
+            "professional_network_id": "10329847",
+            "profile_name": "Super C",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/d2674aefc801a1e0b3c0412dbbcf98486d89bc35e680bec7ba69ce50417df2fa.jpg",
+            "description": "Super C est une enseigne d’escompte fièrement québécoise et chef de file dans son secteur, qui propose une offre alimentaire complète à bas prix. Comptant plus de 110 magasins à travers le Québec, Super C mise sur trois garanties : Toujours frais, Toujours en stock et Toujours à bas prix. Grâce à une offre variée de produits frais, surgelés, locaux, de marques nationales et privées, l’enseigne répond aux attentes des consommateurs d’ici qui recherche de la valeur, sans compromis sur la qualité. Super C fait partie de la grande famille METRO, fondée en 1947. Pour en savoir plus, visitez superc.ca.",
+            "company_type": "Privately Held",
+            "year_founded": 1947,
+            "employee_count_range": "5001-10000",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Retail"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 2219764,
+          "basic_info": {
+            "name": "SUPER MARKET",
+            "crustdata_company_id": 2219764,
+            "primary_domain": "super-market.cc",
+            "all_domains": [
+              "super-market.cc"
+            ],
+            "website": "http://super-market.cc/",
+            "professional_network_url": "https://www.linkedin.com/company/super-market-cc",
+            "professional_network_id": "14016663",
+            "profile_name": "SUPER MARKET",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/b18458fdff074c1d554b0ad9312ddfc6b8aef2c622419dbdb65865bfa1944045.jpg",
+            "description": null,
+            "company_type": "Privately Held",
+            "year_founded": null,
+            "employee_count_range": "2-10",
+            "markets": [],
+            "industries": [
+              "Design Services",
+              "Professional Services"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 4721518,
+          "basic_info": {
+            "name": "Super 99",
+            "crustdata_company_id": 4721518,
+            "primary_domain": "super99.com",
+            "all_domains": [
+              "super99.com"
+            ],
+            "website": "http://www.super99.com/",
+            "professional_network_url": "https://www.linkedin.com/company/super-99",
+            "professional_network_id": "3752579",
+            "profile_name": "Super 99",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/744961f4eda0c7b149d7020dd4bed8304ac5dbb383b76805f1054983b9f8907d.jpg",
+            "description": "Super 99, empresa 100% panameña, cuenta con 50 sucursales a nivel nacional.Nuestra Familia 99 está conformada por más de 6 mil colaboradores e impactamos al mercado laboral de manera indirecta con más de 15 mil plazas a través de proveedores locales e internacionales, convirtiéndonos en uno de los empleadores privados más grandes de Panamá.",
+            "company_type": "Privately Held",
+            "year_founded": 1986,
+            "employee_count_range": "5001-10000",
+            "markets": [],
+            "industries": [
+              "Retail Groceries",
+              "Food and Beverage Retail",
+              "Retail"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 3942601,
+          "basic_info": {
+            "name": "Super Muffato",
+            "crustdata_company_id": 3942601,
+            "primary_domain": "muffatogourmet.com",
+            "all_domains": [
+              "muffatogourmet.com"
+            ],
+            "website": "http://muffatogourmet.com",
+            "professional_network_url": "https://www.linkedin.com/company/super-muffato",
+            "professional_network_id": "75799977",
+            "profile_name": "Super Muffato",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/63cbb0c5bb7df4a59e1d813fd79051d92994b18d4b76af8c71ed24e6f1de85a3.jpg",
+            "description": "Super Muffato is a supermarkets company based out of Cambé, Brazil.",
+            "company_type": "Privately Held",
+            "year_founded": null,
+            "employee_count_range": "10001+",
+            "markets": [],
+            "industries": [
+              "Retail Groceries",
+              "Food and Beverage Retail",
+              "Retail"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 903134,
+          "basic_info": {
+            "name": "Super Group (SGHC)",
+            "crustdata_company_id": 903134,
+            "primary_domain": "supergroup.com",
+            "all_domains": [
+              "supergroup.com"
+            ],
+            "website": "http://www.supergroup.com",
+            "professional_network_url": "https://www.linkedin.com/company/supergroupholdingcompany",
+            "professional_network_id": "72169521",
+            "profile_name": "Super Group (SGHC)",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/e8ff06c11ee3bf41a5e5eeaac185923d9c4075db5ffc26772517d2c0d03a6f7b.jpg",
+            "description": "Super Group is the holding company for leading global online sports betting and gaming businesses: Betway, a premier online sports betting brand, and Spin, a multi-brand online casino offering.Super Group is listed on the NYSE (ticker: SGHC). Our high-growth strategy is underpinned by our two distinct offerings and our ever-increasing global footprint. Through our advanced data driven analytics, we are laser focused on providing our customers with the most engaging entertainment possible.We have a global footprint: the companies in our group are licensed in over 20 jurisdictions throughout Europe, the Americas and Africa; Betway has more than 70 brand partnerships with many teams, leagues and sport personalities globally; and ~6.2 million average monthly active customers as at Quarter 2 2026. In 2025, we also placed at number 5 in the EGR Power 50 rankings.Our leadership team are betting, gaming and technology pioneers with decades of industry experience. They are responsible for our workforce of over 2,700 staff working across 17 in-country teams across the globe.Super Group is committed to providing entertainment to our customers in a fair, safe, secure and responsible environment. Our group not only offer our customers industry-leading support tools and services, but also closely monitor potential issues via our substantial and personalized dataset and early warning systems.Betway Group LinkedIn Page: https://www.linkedin.com/company/betwaygroup/",
+            "company_type": "Public Company",
+            "year_founded": 2001,
+            "employee_count_range": "1001-5000",
+            "markets": [
+              "NYSE"
+            ],
+            "industries": [
+              "Entertainment Providers"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 1203995,
+          "basic_info": {
+            "name": "Super Retail Group",
+            "crustdata_company_id": 1203995,
+            "primary_domain": "superretailgroup.com.au",
+            "all_domains": [
+              "superretailgroup.com.au",
+              "superretailgroup.com"
+            ],
+            "website": "http://www.superretailgroup.com",
+            "professional_network_url": "https://www.linkedin.com/company/super-retail-group",
+            "professional_network_id": "1589425",
+            "profile_name": "Super Retail Group",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/8bf8eab35c72edbd8d5a00c7abdc55c1cf77aad17296f7c8d209f78b19d41e5e.jpg",
+            "description": "At Super Retail Group, we inspire you to live your passion. We are the proud owner of four iconic brands: Supercheap Auto, rebel, BCF and Macpac, and are one of Australia and New Zealand’s largest retailers.Our powerful brands have established, leading positions in growing high-involvement lifestyle categories of auto, sports and outdoor leisure. We provide our customers and highly engaged active loyalty club members with the option to experience our brands whenever and however they choose – whether that’s through our network of circa 780 stores or via our digital capabilities, which we continue to enhance.",
+            "company_type": "Public Company",
+            "year_founded": 1972,
+            "employee_count_range": "10001+",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Retail"
+            ]
+          },
+          "social_profiles": null
+        }
+      },
+      {
+        "confidence_score": 0.6,
+        "company_data": {
+          "crustdata_company_id": 1231892,
+          "basic_info": {
+            "name": "Super Smelters Limited",
+            "crustdata_company_id": 1231892,
+            "primary_domain": "supershakti.in",
+            "all_domains": [
+              "supershakti.in"
+            ],
+            "website": "http://www.supershakti.in",
+            "professional_network_url": "https://www.linkedin.com/company/super-smelters-limited",
+            "professional_network_id": "588200",
+            "profile_name": "Super Smelters Limited",
+            "logo_permalink": "https://crustdata-media.s3.us-east-2.amazonaws.com/company/3f56332f3dc4d58dc96fa0627165fd8d68d831f8e450069f17ca144a16ee1b2f.jpg",
+            "description": "Super Smelters Limited is India's leading steel manufacturers with diversified interests across Metals, Mining, and Power. With a strong presence across domestic and international markets, the company serves customers throughout India while exporting to key global destinations. Committed to sustainability and environmentally responsible manufacturing, Super Smelters Limited combines advanced manufacturing capabilities with an unwavering focus on innovation, quality, and operational excellence, contributing significantly to infrastructure and industrial development while creating long-term value for stakeholders and the environment.",
+            "company_type": "Public Company",
+            "year_founded": 1995,
+            "employee_count_range": "1001-5000",
+            "markets": [
+              "PRIVATE"
+            ],
+            "industries": [
+              "Construction"
+            ]
+          },
+          "social_profiles": null
+        }
+      }
+    ]
+  }
+]

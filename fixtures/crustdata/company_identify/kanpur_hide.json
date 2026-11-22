@@ -1,0 +1,50 @@
+[
+  {
+    "matched_on": "Kanpur Hide Exports Pvt Ltd",
+    "match_type": "name",
+    "matches": [
+      {
+        "confidence_score": 0.95,
+        "company_data": {
+          "crustdata_company_id": 700101,
+          "basic_info": {
+            "name": "Kanpur Hide Exports Pvt Ltd",
+            "crustdata_company_id": 700101,
+            "description": "Kanpur Hide Exports Pvt Ltd is a leather company based out of India.",
+            "primary_domain": "kanpurhide.example",
+            "employee_count_range": "201-500",
+            "industries": [
+              "Leather",
+              "Manufacturing"
+            ],
+            "website": "https://kanpurhide.example",
+            "professional_network_url": "https://www.linkedin.com/company/kanpurhide",
+            "year_founded": 2004,
+            "company_type": "Privately Held"
+          }
+        }
+      },
+      {
+        "confidence_score": 0.42,
+        "company_data": {
+          "crustdata_company_id": 700191,
+          "basic_info": {
+            "name": "Kanpur Hides & Skins Traders",
+            "crustdata_company_id": 700191,
+            "description": "Kanpur Hides & Skins Traders is a wholesale company based out of India.",
+            "primary_domain": "kanpurhides-traders.example",
+            "employee_count_range": "1-10",
+            "industries": [
+              "Wholesale",
+              "Manufacturing"
+            ],
+            "website": "https://kanpurhides-traders.example",
+            "professional_network_url": "https://www.linkedin.com/company/kanpurhides-traders",
+            "year_founded": 2004,
+            "company_type": "Privately Held"
+          }
+        }
+      }
+    ]
+  }
+]

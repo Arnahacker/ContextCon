@@ -1,0 +1,19 @@
+{
+  "job_listings": [
+    {
+      "job_details": {
+        "title": "Dyeing Master",
+        "url": "https://jobs.example/balaji_jaipur/1"
+      },
+      "location": {
+        "raw": "Jaipur, Rajasthan",
+        "city": "Jaipur"
+      },
+      "metadata": {
+        "date_added": "2026-10-01"
+      }
+    }
+  ],
+  "next_cursor": null,
+  "total_count": 1
+}

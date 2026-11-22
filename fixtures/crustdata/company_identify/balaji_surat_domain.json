@@ -1,0 +1,29 @@
+[
+  {
+    "matched_on": "balajisurat.example",
+    "match_type": "domain",
+    "matches": [
+      {
+        "confidence_score": 1.0,
+        "company_data": {
+          "crustdata_company_id": 700106,
+          "basic_info": {
+            "name": "Shree Balaji Exports",
+            "crustdata_company_id": 700106,
+            "description": "Shree Balaji Exports is a textiles company based out of India.",
+            "primary_domain": "balajisurat.example",
+            "employee_count_range": "51-200",
+            "industries": [
+              "Textiles",
+              "Manufacturing"
+            ],
+            "website": "https://balajisurat.example",
+            "professional_network_url": "https://www.linkedin.com/company/balajisurat",
+            "year_founded": 2004,
+            "company_type": "Privately Held"
+          }
+        }
+      }
+    ]
+  }
+]

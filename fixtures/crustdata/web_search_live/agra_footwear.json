@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "query": "\"Agra Footwear Works\" Agra (fire OR explosion OR accident OR pollution OR strike OR closure OR court)",
+  "timestamp": 1795334400000,
+  "results": [
+    {
+      "source": "news",
+      "title": "Fire at Agra shoe market, 12 shops gutted",
+      "url": "https://news.example/agra-shoe-market-fire",
+      "snippet": "A fire broke out in the Hing Ki Mandi shoe market in Agra on Sunday night.",
+      "position": 1
+    }
+  ],
+  "metadata": {
+    "total_results": 1
+  }
+}

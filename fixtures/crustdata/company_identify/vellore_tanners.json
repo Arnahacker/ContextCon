@@ -1,0 +1,29 @@
+[
+  {
+    "matched_on": "Vellore Tanners Ltd",
+    "match_type": "name",
+    "matches": [
+      {
+        "confidence_score": 0.95,
+        "company_data": {
+          "crustdata_company_id": 700104,
+          "basic_info": {
+            "name": "Vellore Tanners Ltd",
+            "crustdata_company_id": 700104,
+            "description": "Vellore Tanners Ltd is a leather company based out of India.",
+            "primary_domain": "velloretanners.example",
+            "employee_count_range": "51-200",
+            "industries": [
+              "Leather",
+              "Manufacturing"
+            ],
+            "website": "https://velloretanners.example",
+            "professional_network_url": "https://www.linkedin.com/company/velloretanners",
+            "year_founded": 2004,
+            "company_type": "Privately Held"
+          }
+        }
+      }
+    ]
+  }
+]

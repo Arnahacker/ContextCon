@@ -1,0 +1,29 @@
+[
+  {
+    "matched_on": "Tiruppur Stitchline Garments",
+    "match_type": "name",
+    "matches": [
+      {
+        "confidence_score": 0.95,
+        "company_data": {
+          "crustdata_company_id": 700103,
+          "basic_info": {
+            "name": "Tiruppur Stitchline Garments",
+            "crustdata_company_id": 700103,
+            "description": "Tiruppur Stitchline Garments is a apparel & fashion company based out of India.",
+            "primary_domain": "stitchline.example",
+            "employee_count_range": "201-500",
+            "industries": [
+              "Apparel & Fashion",
+              "Manufacturing"
+            ],
+            "website": "https://stitchline.example",
+            "professional_network_url": "https://www.linkedin.com/company/stitchline",
+            "year_founded": 2004,
+            "company_type": "Privately Held"
+          }
+        }
+      }
+    ]
+  }
+]

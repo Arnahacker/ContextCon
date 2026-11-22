@@ -1,0 +1,65 @@
+[
+  {
+    "matched_on": "Shree Balaji Exports",
+    "match_type": "name",
+    "matches": [
+      {
+        "confidence_score": 0.81,
+        "company_data": {
+          "crustdata_company_id": 700105,
+          "basic_info": {
+            "name": "Shree Balaji Exports",
+            "crustdata_company_id": 700105,
+            "description": "Shree Balaji Exports is a textiles company based out of Jaipur, Rajasthan, India.",
+            "primary_domain": "balajijaipur.example",
+            "employee_count_range": "51-200",
+            "industries": [
+              "Textiles",
+              "Manufacturing"
+            ],
+            "website": "https://balajijaipur.example",
+            "professional_network_url": "https://www.linkedin.com/company/balajijaipur",
+            "year_founded": 2004,
+            "company_type": "Privately Held"
+          }
+        }
+      },
+      {
+        "confidence_score": 0.79,
+        "company_data": {
+          "crustdata_company_id": 700106,
+          "basic_info": {
+            "name": "Shree Balaji Exports",
+            "crustdata_company_id": 700106,
+            "description": "Shree Balaji Exports is a textiles company based out of Surat, Gujarat, India.",
+            "primary_domain": "balajisurat.example",
+            "employee_count_range": "51-200",
+            "industries": [
+              "Textiles",
+              "Manufacturing"
+            ],
+            "website": "https://balajisurat.example",
+            "professional_network_url": "https://www.linkedin.com/company/balajisurat",
+            "year_founded": 2004,
+            "company_type": "Privately Held"
+          }
+        }
+      },
+      {
+        "confidence_score": 0.8,
+        "company_data": {
+          "crustdata_company_id": 700195,
+          "basic_info": {
+            "name": "SHREE BALAJI EXPORTS (U.K.) LIMITED",
+            "primary_domain": null,
+            "employee_count_range": null,
+            "industries": [
+              "Textile Manufacturing"
+            ],
+            "description": "A textiles company based out of United Kingdom."
+          }
+        }
+      }
+    ]
+  }
+]

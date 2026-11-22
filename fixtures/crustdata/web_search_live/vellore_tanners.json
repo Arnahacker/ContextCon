@@ -1,0 +1,31 @@
+{
+  "success": true,
+  "query": "\"Vellore Tanners\" Ranipet (fire OR explosion OR accident OR pollution OR strike OR closure OR court)",
+  "timestamp": 1795334400000,
+  "results": [
+    {
+      "source": "news",
+      "title": "Major fire at Vellore Tanners unit in Ranipet",
+      "url": "https://news.example/tn/vellore-tanners-ranipet-fire",
+      "snippet": "A major fire broke out at the Vellore Tanners Ltd tannery in the SIPCOT complex, Ranipet; no casualties were reported.",
+      "position": 1
+    },
+    {
+      "source": "news",
+      "title": "Vellore Tannery Workers Cooperative hit by fire in Ambur",
+      "url": "https://news.example/tn/ambur-coop-fire",
+      "snippet": "Fire damaged stock at a workers' cooperative tannery in Ambur.",
+      "position": 2
+    },
+    {
+      "source": "web",
+      "title": "Vellore Tanners Association threatens strike over effluent charges",
+      "url": "https://news.example/tn/tanners-association-strike",
+      "snippet": "The district tanners association said members may strike next month.",
+      "position": 3
+    }
+  ],
+  "metadata": {
+    "total_results": 3
+  }
+}

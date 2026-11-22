@@ -1,0 +1,574 @@
+{
+  "_note": "Offline fixtures. Each entry: endpoint + request body (matched ignoring key order, case and extra spaces) -> response file. A file at <endpoint_slug>/<request_hash>.json is also found without an index entry.",
+  "entries": [
+    {
+      "endpoint": "/company/identify",
+      "body": {
+        "names": [
+          "Kanpur Hide Exports Pvt Ltd"
+        ]
+      },
+      "response": "company_identify/kanpur_hide.json"
+    },
+    {
+      "endpoint": "/company/enrich",
+      "body": {
+        "crustdata_company_ids": [
+          700101
+        ],
+        "fields": [
+          "basic_info",
+          "headcount",
+          "locations",
+          "taxonomy",
+          "news"
+        ]
+      },
+      "response": "company_enrich/kanpur_hide.json"
+    },
+    {
+      "endpoint": "/job/search",
+      "body": {
+        "filters": {
+          "op": "and",
+          "conditions": [
+            {
+              "field": "company.basic_info.primary_domain",
+              "type": "=",
+              "value": "kanpurhide.example"
+            }
+          ]
+        },
+        "fields": [
+          "job_details.title",
+          "job_details.url",
+          "location.raw",
+          "location.city",
+          "metadata.date_added"
+        ],
+        "sorts": [
+          {
+            "field": "metadata.date_added",
+            "order": "desc"
+          }
+        ],
+        "limit": 25
+      },
+      "response": "job_search/kanpur_hide.json"
+    },
+    {
+      "endpoint": "/web/search/live",
+      "body": {
+        "query": "\"Kanpur Hide Exports\" Kanpur (fire OR explosion OR accident OR pollution OR strike OR closure OR court)",
+        "location": "IN",
+        "sources": [
+          "news",
+          "web"
+        ]
+      },
+      "response": "web_search_live/kanpur_hide.json"
+    },
+    {
+      "endpoint": "/company/identify",
+      "body": {
+        "names": [
+          "Agra Footwear Works"
+        ]
+      },
+      "response": "company_identify/agra_footwear.json"
+    },
+    {
+      "endpoint": "/company/enrich",
+      "body": {
+        "crustdata_company_ids": [
+          700102
+        ],
+        "fields": [
+          "basic_info",
+          "headcount",
+          "locations",
+          "taxonomy",
+          "news"
+        ]
+      },
+      "response": "company_enrich/agra_footwear.json"
+    },
+    {
+      "endpoint": "/job/search",
+      "body": {
+        "filters": {
+          "op": "and",
+          "conditions": [
+            {
+              "field": "company.basic_info.primary_domain",
+              "type": "=",
+              "value": "agrafootwear.example"
+            }
+          ]
+        },
+        "fields": [
+          "job_details.title",
+          "job_details.url",
+          "location.raw",
+          "location.city",
+          "metadata.date_added"
+        ],
+        "sorts": [
+          {
+            "field": "metadata.date_added",
+            "order": "desc"
+          }
+        ],
+        "limit": 25
+      },
+      "response": "job_search/agra_footwear.json"
+    },
+    {
+      "endpoint": "/web/search/live",
+      "body": {
+        "query": "\"Agra Footwear Works\" Agra (fire OR explosion OR accident OR pollution OR strike OR closure OR court)",
+        "location": "IN",
+        "sources": [
+          "news",
+          "web"
+        ]
+      },
+      "response": "web_search_live/agra_footwear.json"
+    },
+    {
+      "endpoint": "/company/identify",
+      "body": {
+        "names": [
+          "Tiruppur Stitchline Garments"
+        ]
+      },
+      "response": "company_identify/stitchline.json"
+    },
+    {
+      "endpoint": "/company/enrich",
+      "body": {
+        "crustdata_company_ids": [
+          700103
+        ],
+        "fields": [
+          "basic_info",
+          "headcount",
+          "locations",
+          "taxonomy",
+          "news"
+        ]
+      },
+      "response": "company_enrich/stitchline.json"
+    },
+    {
+      "endpoint": "/job/search",
+      "body": {
+        "filters": {
+          "op": "and",
+          "conditions": [
+            {
+              "field": "company.basic_info.primary_domain",
+              "type": "=",
+              "value": "stitchline.example"
+            }
+          ]
+        },
+        "fields": [
+          "job_details.title",
+          "job_details.url",
+          "location.raw",
+          "location.city",
+          "metadata.date_added"
+        ],
+        "sorts": [
+          {
+            "field": "metadata.date_added",
+            "order": "desc"
+          }
+        ],
+        "limit": 25
+      },
+      "response": "job_search/stitchline.json"
+    },
+    {
+      "endpoint": "/web/search/live",
+      "body": {
+        "query": "\"Tiruppur Stitchline Garments\" Tiruppur (fire OR explosion OR accident OR pollution OR strike OR closure OR court)",
+        "location": "IN",
+        "sources": [
+          "news",
+          "web"
+        ]
+      },
+      "response": "web_search_live/stitchline.json"
+    },
+    {
+      "endpoint": "/company/identify",
+      "body": {
+        "names": [
+          "Vellore Tanners Ltd"
+        ]
+      },
+      "response": "company_identify/vellore_tanners.json"
+    },
+    {
+      "endpoint": "/company/enrich",
+      "body": {
+        "crustdata_company_ids": [
+          700104
+        ],
+        "fields": [
+          "basic_info",
+          "headcount",
+          "locations",
+          "taxonomy",
+          "news"
+        ]
+      },
+      "response": "company_enrich/vellore_tanners.json"
+    },
+    {
+      "endpoint": "/job/search",
+      "body": {
+        "filters": {
+          "op": "and",
+          "conditions": [
+            {
+              "field": "company.basic_info.primary_domain",
+              "type": "=",
+              "value": "velloretanners.example"
+            }
+          ]
+        },
+        "fields": [
+          "job_details.title",
+          "job_details.url",
+          "location.raw",
+          "location.city",
+          "metadata.date_added"
+        ],
+        "sorts": [
+          {
+            "field": "metadata.date_added",
+            "order": "desc"
+          }
+        ],
+        "limit": 25
+      },
+      "response": "job_search/vellore_tanners.json"
+    },
+    {
+      "endpoint": "/web/search/live",
+      "body": {
+        "query": "\"Vellore Tanners\" Ranipet (fire OR explosion OR accident OR pollution OR strike OR closure OR court)",
+        "location": "IN",
+        "sources": [
+          "news",
+          "web"
+        ]
+      },
+      "response": "web_search_live/vellore_tanners.json"
+    },
+    {
+      "endpoint": "/web/enrich/live",
+      "body": {
+        "urls": [
+          "https://news.example/tn/vellore-tanners-ranipet-fire"
+        ]
+      },
+      "response": "web_enrich_live/vellore_tanners_fire.json"
+    },
+    {
+      "endpoint": "/company/identify",
+      "body": {
+        "names": [
+          "Shree Balaji Exports"
+        ]
+      },
+      "response": "company_identify/shree_balaji.json"
+    },
+    {
+      "endpoint": "/company/identify",
+      "body": {
+        "domains": [
+          "balajijaipur.example"
+        ]
+      },
+      "response": "company_identify/balaji_jaipur_domain.json"
+    },
+    {
+      "endpoint": "/company/enrich",
+      "body": {
+        "crustdata_company_ids": [
+          700105
+        ],
+        "fields": [
+          "basic_info",
+          "headcount",
+          "locations",
+          "taxonomy",
+          "news"
+        ]
+      },
+      "response": "company_enrich/balaji_jaipur.json"
+    },
+    {
+      "endpoint": "/job/search",
+      "body": {
+        "filters": {
+          "op": "and",
+          "conditions": [
+            {
+              "field": "company.basic_info.primary_domain",
+              "type": "=",
+              "value": "balajijaipur.example"
+            }
+          ]
+        },
+        "fields": [
+          "job_details.title",
+          "job_details.url",
+          "location.raw",
+          "location.city",
+          "metadata.date_added"
+        ],
+        "sorts": [
+          {
+            "field": "metadata.date_added",
+            "order": "desc"
+          }
+        ],
+        "limit": 25
+      },
+      "response": "job_search/balaji_jaipur.json"
+    },
+    {
+      "endpoint": "/web/search/live",
+      "body": {
+        "query": "\"Shree Balaji Exports\" Jaipur (fire OR explosion OR accident OR pollution OR strike OR closure OR court)",
+        "location": "IN",
+        "sources": [
+          "news",
+          "web"
+        ]
+      },
+      "response": "web_search_live/balaji_jaipur.json"
+    },
+    {
+      "endpoint": "/company/identify",
+      "body": {
+        "domains": [
+          "balajisurat.example"
+        ]
+      },
+      "response": "company_identify/balaji_surat_domain.json"
+    },
+    {
+      "endpoint": "/company/enrich",
+      "body": {
+        "crustdata_company_ids": [
+          700106
+        ],
+        "fields": [
+          "basic_info",
+          "headcount",
+          "locations",
+          "taxonomy",
+          "news"
+        ]
+      },
+      "response": "company_enrich/balaji_surat.json"
+    },
+    {
+      "endpoint": "/job/search",
+      "body": {
+        "filters": {
+          "op": "and",
+          "conditions": [
+            {
+              "field": "company.basic_info.primary_domain",
+              "type": "=",
+              "value": "balajisurat.example"
+            }
+          ]
+        },
+        "fields": [
+          "job_details.title",
+          "job_details.url",
+          "location.raw",
+          "location.city",
+          "metadata.date_added"
+        ],
+        "sorts": [
+          {
+            "field": "metadata.date_added",
+            "order": "desc"
+          }
+        ],
+        "limit": 25
+      },
+      "response": "job_search/balaji_surat.json"
+    },
+    {
+      "endpoint": "/web/search/live",
+      "body": {
+        "query": "\"Shree Balaji Exports\" Surat (fire OR explosion OR accident OR pollution OR strike OR closure OR court)",
+        "location": "IN",
+        "sources": [
+          "news",
+          "web"
+        ]
+      },
+      "response": "web_search_live/balaji_surat.json"
+    },
+    {
+      "endpoint": "/company/identify",
+      "body": {
+        "names": [
+          "Moradabad Brassware Co"
+        ]
+      },
+      "response": "company_identify/moradabad_brass.json"
+    },
+    {
+      "endpoint": "/company/enrich",
+      "body": {
+        "crustdata_company_ids": [
+          700107
+        ],
+        "fields": [
+          "basic_info",
+          "headcount",
+          "locations",
+          "taxonomy",
+          "news"
+        ]
+      },
+      "response": "company_enrich/moradabad_brass.json"
+    },
+    {
+      "endpoint": "/job/search",
+      "body": {
+        "filters": {
+          "op": "and",
+          "conditions": [
+            {
+              "field": "company.basic_info.primary_domain",
+              "type": "=",
+              "value": "moradabadbrass.example"
+            }
+          ]
+        },
+        "fields": [
+          "job_details.title",
+          "job_details.url",
+          "location.raw",
+          "location.city",
+          "metadata.date_added"
+        ],
+        "sorts": [
+          {
+            "field": "metadata.date_added",
+            "order": "desc"
+          }
+        ],
+        "limit": 25
+      },
+      "response": "job_search/moradabad_brass.json"
+    },
+    {
+      "endpoint": "/web/search/live",
+      "body": {
+        "query": "\"Moradabad Brassware\" Moradabad (fire OR explosion OR accident OR pollution OR strike OR closure OR court)",
+        "location": "IN",
+        "sources": [
+          "news",
+          "web"
+        ]
+      },
+      "response": "web_search_live/moradabad_brass.json"
+    },
+    {
+      "endpoint": "/company/identify",
+      "body": {
+        "names": [
+          "Super Tannery Ltd"
+        ]
+      },
+      "response": "company_identify/super_tannery.json"
+    },
+    {
+      "endpoint": "/company/identify",
+      "body": {
+        "names": [
+          "Super Tannery Limited"
+        ]
+      },
+      "response": "company_identify/super_tannery.json"
+    },
+    {
+      "endpoint": "/company/identify",
+      "body": {
+        "names": [
+          "Super Tannery"
+        ]
+      },
+      "response": "company_identify/super_tannery.json"
+    },
+    {
+      "endpoint": "/company/identify",
+      "body": {
+        "domains": [
+          "supertannery.com"
+        ]
+      },
+      "response": "company_identify/super_tannery_domain.json"
+    },
+    {
+      "endpoint": "/company/enrich",
+      "body": {
+        "crustdata_company_ids": [
+          4889
+        ],
+        "fields": [
+          "basic_info",
+          "headcount",
+          "locations",
+          "taxonomy",
+          "news"
+        ]
+      },
+      "response": "company_enrich/super_tannery.json"
+    },
+    {
+      "endpoint": "/job/search",
+      "body": {
+        "filters": {
+          "op": "and",
+          "conditions": [
+            {
+              "field": "company.basic_info.primary_domain",
+              "type": "=",
+              "value": "supertannery.com"
+            }
+          ]
+        },
+        "fields": [
+          "job_details.title",
+          "job_details.url",
+          "location.raw",
+          "location.city",
+          "metadata.date_added"
+        ],
+        "sorts": [
+          {
+            "field": "metadata.date_added",
+            "order": "desc"
+          }
+        ],
+        "limit": 25
+      },
+      "response": "job_search/super_tannery.json"
+    }
+  ]
+}

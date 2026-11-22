@@ -1,0 +1,19 @@
+{
+  "job_listings": [
+    {
+      "job_details": {
+        "title": "Weaving Supervisor",
+        "url": "https://jobs.example/balaji_surat/1"
+      },
+      "location": {
+        "raw": "Surat, Gujarat",
+        "city": "Surat"
+      },
+      "metadata": {
+        "date_added": "2026-10-03"
+      }
+    }
+  ],
+  "next_cursor": null,
+  "total_count": 1
+}

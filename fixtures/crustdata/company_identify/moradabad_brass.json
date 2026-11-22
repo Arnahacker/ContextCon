@@ -1,0 +1,29 @@
+[
+  {
+    "matched_on": "Moradabad Brassware Co",
+    "match_type": "name",
+    "matches": [
+      {
+        "confidence_score": 0.95,
+        "company_data": {
+          "crustdata_company_id": 700107,
+          "basic_info": {
+            "name": "Moradabad Brassware Co",
+            "crustdata_company_id": 700107,
+            "description": "Moradabad Brassware Co is a handicrafts company based out of India.",
+            "primary_domain": "moradabadbrass.example",
+            "employee_count_range": "11-50",
+            "industries": [
+              "Handicrafts",
+              "Manufacturing"
+            ],
+            "website": "https://moradabadbrass.example",
+            "professional_network_url": "https://www.linkedin.com/company/moradabadbrass",
+            "year_founded": 2004,
+            "company_type": "Privately Held"
+          }
+        }
+      }
+    ]
+  }
+]

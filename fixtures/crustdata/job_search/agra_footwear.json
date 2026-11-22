@@ -1,0 +1,32 @@
+{
+  "job_listings": [
+    {
+      "job_details": {
+        "title": "Shoe Upper Stitcher",
+        "url": "https://jobs.example/agra_footwear/1"
+      },
+      "location": {
+        "raw": "Agra, Uttar Pradesh",
+        "city": "Agra"
+      },
+      "metadata": {
+        "date_added": "2026-10-10"
+      }
+    },
+    {
+      "job_details": {
+        "title": "Quality Checker",
+        "url": "https://jobs.example/agra_footwear/2"
+      },
+      "location": {
+        "raw": "Agra, Uttar Pradesh",
+        "city": "Agra"
+      },
+      "metadata": {
+        "date_added": "2026-09-01"
+      }
+    }
+  ],
+  "next_cursor": null,
+  "total_count": 2
+}
