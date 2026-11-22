@@ -129,6 +129,8 @@ def build(view: dict) -> list[dict]:
     nodes = []
     for area in AREAS:
         fs = [f for f in facts if f["field"] in area["fields"]]
+        if area["id"] == "sanctions" and not fs:
+            continue  # only shown when a sanctions check actually ran (a match still shows, red)
         rs = _rules_in(area, steps)
         points = _points(area, facts)
         # green means a RECORD backs it. The applicant's own word is not a check -- except for

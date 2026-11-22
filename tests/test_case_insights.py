@@ -20,7 +20,7 @@ def test_hero_findings_are_red_and_cover_is_waiting():
     assert m["identity"]["status"] == "good"
     assert {m[k]["status"] for k in ("staff", "sites", "work")} == {"bad"}
     assert m["cover"]["status"] == "warn" and m["cover"]["open_questions"]
-    assert m["sanctions"]["status"] == "neutral"
+    assert "sanctions" not in m  # no sanctions check ran: no circle for it
 
 
 def test_lookalike_never_paints_unchecked_areas_green():
