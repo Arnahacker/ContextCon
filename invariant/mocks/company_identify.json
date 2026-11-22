@@ -1,0 +1,25 @@
+[
+ {
+  "matched_on": "Rajda Industries",
+  "match_type": "name",
+  "matches": [
+   {
+    "confidence_score": 0.96,
+    "company_data": {
+     "crustdata_company_id": 5285338,
+     "basic_info": {
+      "name": "Rajda Industries & Exports Pvt. Ltd.",
+      "crustdata_company_id": 5285338,
+      "primary_domain": "rajda.in",
+      "website": "http://www.rajda.in",
+      "year_founded": 1980,
+      "employee_count_range": "201-500",
+      "company_type": "Privately Held",
+      "status": "active",
+      "description": "Rajda Industries is a professionally managed, leading global manufacturer and exporter, recognized as a Government of India 2-Star Export House. Our socially responsible and compliant manufacturing facility spans over 6,000 square metres in Kolkata, India, operating assembly-line production and specializing in ethically manufactured leather and non-leather bags and small leather goods (SLGs) for international fashion and lifestyle brands across Europe, the UK, the USA, and other international markets.Our manufacturing facility is supported by comprehensive compliance, sustainability, and quality systems, including WRAP, SA8000, amfori BSCI, amfori BEPI, SLCP, RCS (Version 2.0), ISO 14001, and Higg Environmental audits.Responsible Manufacturing | Social Compliance | Environmental Management"
+     }
+    }
+   }
+  ]
+ }
+]

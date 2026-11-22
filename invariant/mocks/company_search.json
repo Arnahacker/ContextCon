@@ -1,0 +1,15 @@
+{"credits_spent": 17.2, "total": 1007, "companies": [
+ {"company_id":"crust:1","basic_info.name":"Alpine Apparels Pvt Ltd","name":"Alpine Apparels Pvt Ltd","headcount.total":324,"headcount":{"total":324},"hq":"Faridabad, Haryana, India"},
+ {"company_id":"crust:2","basic_info.name":"EDCONS EXPORTS PVT. LTD.","name":"EDCONS EXPORTS PVT. LTD.","headcount.total":169,"headcount":{"total":169},"hq":"India"},
+ {"company_id":"crust:3","basic_info.name":"D2 International","name":"D2 International","headcount.total":147,"headcount":{"total":147},"hq":"Kolkata, West Bengal, India"},
+ {"company_id":"crust:4","basic_info.name":"Maple Accessories Pvt Ltd","name":"Maple Accessories Pvt Ltd","headcount.total":91,"headcount":{"total":91},"hq":"Panchla, West Bengal, India"},
+ {"company_id":"crust:5","basic_info.name":"AH Group of Companies","name":"AH Group of Companies","headcount.total":88,"headcount":{"total":88},"hq":"Kilpauk, Tamil Nadu, India"},
+ {"company_id":"crust:6","basic_info.name":"Rajda Industries & Exports Pvt. Ltd.","name":"Rajda Industries & Exports Pvt. Ltd.","headcount.total":84,"headcount":{"total":84},"hq":"Joypur, West Bengal, India"},
+ {"company_id":"crust:7","basic_info.name":"Gemini Enterprises","name":"Gemini Enterprises","headcount.total":75,"headcount":{"total":75},"hq":"Chennai, Tamil Nadu, India"},
+ {"company_id":"crust:8","basic_info.name":"Unique International Pvt. Ltd.","name":"Unique International Pvt. Ltd.","headcount.total":69,"headcount":{"total":69},"hq":"Naktala, West Bengal, India"},
+ {"company_id":"crust:9","basic_info.name":"Star Exports","name":"Star Exports","headcount.total":66,"headcount":{"total":66},"hq":"Joypur, West Bengal, India"},
+ {"company_id":"crust:10","basic_info.name":"S.S. INTERNATIONAL - SSI Leathers","name":"S.S. INTERNATIONAL - SSI Leathers","headcount.total":59,"headcount":{"total":59},"hq":"Air Force, Haryana, India"},
+ {"company_id":"crust:11","basic_info.name":"Savi Global","name":"Savi Global","headcount.total":54,"headcount":{"total":54},"hq":"Noida, Uttar Pradesh, India"},
+ {"company_id":"crust:12","basic_info.name":"Swastik International","name":"Swastik International","headcount.total":53,"headcount":{"total":53},"hq":"Unnao, Uttar Pradesh, India"},
+ {"company_id":"crust:13","basic_info.name":"MRIG FASHION","name":"MRIG FASHION","headcount.total":44,"headcount":{"total":44},"hq":"Kolkata, West Bengal, India"}
+]}

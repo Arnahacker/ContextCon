@@ -1,0 +1,79 @@
+# ILLUSTRATIVE RATE CARD. Indian fire cover is de-tariffed: there is no national
+# table. These ranges come from published sources and must be labelled
+# "illustrative" on screen. Never quote a real customer from this file.
+version: "2026.11.22.3"
+
+gst_rate: 0.18
+minimum_premium_inr: 5000
+
+# ---- tolerances (shown on screen next to any contradiction they cause)
+tolerances:
+  headcount_over_declared_pct: 25   # record above declared by more than this -> contradicts
+  # record BELOW declared is never a contradiction: LinkedIn undercounts factory floors
+
+# ---- gate: which fields must be resolved before we may price
+gate:
+  tier0: [company_identity]                       # blocks everything
+  tier1: [cover_type, sum_insured_inr, occupancy] # blocks pricing
+  tier2: [claims_history, construction, protection]  # never blocks
+
+# ---- fire: rate per mille of sum insured, by occupancy
+occupancy_rate_per_mille:
+  office: 0.08
+  garment_stitching: 0.75
+  light_manufacturing: 0.55
+  warehouse: 0.80
+  leather_tanning: 1.20
+  chemical_processing: 1.65
+  unknown: 1.00
+
+# ---- workmen's compensation: rate per 100 of annual wages, by category
+wc_rate_per_100_wages:
+  clerical: 2.45
+  machinist: 12.10
+  unknown: 8.00
+
+# ---- named multipliers. Each must be tied to the facts that triggered it.
+loadings:
+  IDENTITY_UNVERIFIED:      {multiplier: 1.30, explain: "We could not confirm which company this is."}
+  HEADCOUNT_UNDERSTATED:    {multiplier: 1.35, explain: "Public record shows materially more staff than declared."}
+  UNDECLARED_HAZARD:        {multiplier: 1.50, explain: "A hazardous process appears in evidence but not on the form."}
+  UNDECLARED_SITE:          {multiplier: 1.20, explain: "A location appears in evidence but not on the form."}
+  ADVERSE_EVENT_CONFIRMED:  {multiplier: 1.75, explain: "A confirmed loss event at this company."}
+  NO_SAFETY_FUNCTION:       {multiplier: 1.10, explain: "No safety or EHS role found at a site of this size."}
+  RAPID_GROWTH:             {multiplier: 1.12, explain: "Headcount grew fast; controls typically lag growth."}
+  CLAIMS_HISTORY_UNKNOWN:   {multiplier: 1.15, explain: "No claims history available and none supplied."}
+  CONSTRUCTION_UNKNOWN:     {multiplier: 1.08, explain: "Construction class not established."}
+  PROTECTION_UNKNOWN:       {multiplier: 1.10, explain: "Fire protection not established."}
+
+discounts:
+  ISO_45001:  {multiplier: 0.92, explain: "Certified occupational health and safety management."}
+  ISO_14001:  {multiplier: 0.96, explain: "Certified environmental management."}
+  LWG_AUDIT:  {multiplier: 0.95, explain: "Leather Working Group audited."}
+  SPRINKLERED: {multiplier: 0.85, explain: "Sprinkler protection confirmed."}
+
+# ---- hard stops
+decline_rules:
+  - id: SEVERE_ADVERSE_EVENT
+    when_field: adverse_event_severe
+    explain: "Confirmed severe loss event at this company within the look-back window."
+
+# ---- what each unknown is worth, used to price the question list
+# (the real number is computed by toggling the fact; this is the fallback)
+question_text:
+  company_identity: "Which company is this? Legal name, GST number or website."
+  sum_insured_inr:  "What sum insured do you need? Building plus machinery plus stock."
+  cover_type:       "Which cover? Fire/property or workmen's compensation."
+  occupancy:        "What exactly happens at the premises?"
+  claims_history:   "Any claims in the last five years? Amount and cause."
+  construction:     "What are the walls and roof made of?"
+  protection:       "Sprinklers, hydrants or extinguishers on site?"
+
+records_we_need:
+  company_identity: "MCA / GST registration, or the company's own website"
+  sum_insured_inr:  "No public record exists. Only the applicant can answer."
+  cover_type:       "No public record exists. Only the applicant can answer."
+  occupancy:        "Pollution board consent, job ads, or the company's own site"
+  claims_history:   "Prior insurer's loss run. Not public."
+  construction:     "Site survey or municipal records. Not reliably public."
+  protection:       "Site survey or fire NOC. Not reliably public."
