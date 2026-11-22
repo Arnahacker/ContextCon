@@ -16,7 +16,8 @@ from .engine import assess
 from .values import fact_range, mid, occupancy, pick
 
 # names a broker understands, for the base lines and the loadings
-OCC_LABEL = {"food_processing": "food processing"}
+OCC_LABEL = {"food_processing": "food processing", "retail": "retail & e-commerce",
+             "warehousing": "warehousing & logistics", "office": "offices & IT"}
 LOADING_LABEL = {
     "HEADCOUNT_UNDERSTATED": "Staff count understated", "UNDECLARED_SITE": "Undeclared location",
     "UNDECLARED_HAZARD": "Undeclared hazardous work", "DISCLOSED_HAZARD": "Hazardous work (disclosed)",

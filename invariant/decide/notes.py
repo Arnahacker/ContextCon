@@ -37,6 +37,11 @@ FIRE_WHY = {
     "engineering": "Mostly metal that does not burn; hot work like welding and cutting is the main risk.",
     "chemicals": "Flammable and reactive materials: the highest fire load on this card.",
     "brassware": "Metal goods and casting furnaces, with little combustible stock.",
+    "retail": "Shops and e-commerce fulfilment hold dense, mixed, often combustible stock, with public or "
+              "high-turnover footfall: a mid-range fire load.",
+    "warehousing": "Large volumes of stock stacked high in one place: a fire spreads fast and the loss "
+                   "concentrates, so warehouses rate above most light manufacturing.",
+    "office": "Desks, servers and paper, with no process heat: the lowest fire load on this card.",
     "other": "No specific class yet: a middle rate until the line of business is known.",
 }
 
@@ -49,6 +54,9 @@ WC_WHY = {
     "engineering": "Heavy machinery, presses and hot work: high injury risk.",
     "chemicals": "Burns, fumes and exposure: the highest injury risk on this card.",
     "brassware": "Furnaces and molten metal, at small scale: moderate injury risk.",
+    "retail": "Shop-floor and stock handling: low to moderate injury risk.",
+    "warehousing": "Manual lifting, forklifts and loading docks: moderate to high injury risk.",
+    "office": "Desk work: the lowest injury risk on this card.",
     "other": "No specific class yet: a middle rate.",
 }
 

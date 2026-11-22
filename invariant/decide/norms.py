@@ -9,14 +9,14 @@ LABEL = "illustrative norms (placeholder, not sourced)"
 STOCK_WEEKS = {
     "leather": (6, 10), "footwear": (6, 10), "garments": (4, 8), "textiles": (4, 8),
     "food_processing": (2, 4), "engineering": (4, 8), "chemicals": (3, 6), "brassware": (6, 10),
-    "other": (4, 8),
+    "retail": (4, 8), "warehousing": (4, 8), "office": (1, 2), "other": (4, 8),
 }
 
 # machinery capital per worker, INR lakh, (low, high)
 MACHINERY_LAKH_PER_WORKER = {
     "leather": (3, 6), "footwear": (3, 6), "garments": (1, 3), "textiles": (2, 4),
     "food_processing": (4, 8), "engineering": (5, 10), "chemicals": (8, 15), "brassware": (2, 4),
-    "other": (2, 5),
+    "retail": (1, 3), "warehousing": (2, 5), "office": (1, 2), "other": (2, 5),
 }
 
 # annual sales per worker, INR lakh, (low, high): estimates monthly sales (and so stock)
@@ -24,7 +24,7 @@ MACHINERY_LAKH_PER_WORKER = {
 REVENUE_LAKH_PER_WORKER = {
     "leather": (15, 30), "footwear": (15, 30), "garments": (8, 15), "textiles": (15, 30),
     "food_processing": (20, 40), "engineering": (20, 40), "chemicals": (40, 80), "brassware": (10, 20),
-    "other": (10, 30),
+    "retail": (20, 60), "warehousing": (10, 25), "office": (15, 40), "other": (10, 30),
 }
 
 # built-up area per worker, sq ft, (low, high): estimates the building when the area is not known

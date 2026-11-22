@@ -15,7 +15,7 @@ from .gate import resolved
 from .values import answered, facts_for
 
 OCCUPANCIES = ["leather", "footwear", "garments", "textiles", "food_processing",
-               "engineering", "chemicals", "brassware", "other"]
+               "engineering", "chemicals", "brassware", "retail", "warehousing", "office", "other"]
 SI_BANDS = ["<1 Cr", "1-5 Cr", "5-25 Cr", "25+ Cr"]
 
 

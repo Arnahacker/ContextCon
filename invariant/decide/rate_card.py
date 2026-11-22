@@ -7,23 +7,27 @@ LABEL = "illustrative rate card (placeholder, not a filed tariff)"
 
 FIRE_PER_MILLE = {
     "leather": 1.20, "footwear": 0.90, "garments": 0.80, "textiles": 1.00, "food_processing": 0.70,
-    "engineering": 0.60, "chemicals": 1.65, "brassware": 0.75, "other": 1.00,
+    "engineering": 0.60, "chemicals": 1.65, "brassware": 0.75,
+    "retail": 0.80, "warehousing": 1.10, "office": 0.25, "other": 1.00,
 }
 STFI_PER_MILLE = 0.15
 WC_PER_100 = {
     "leather": 4.0, "footwear": 3.0, "garments": 2.5, "textiles": 3.0, "food_processing": 3.0,
-    "engineering": 5.0, "chemicals": 6.0, "brassware": 3.5, "other": 3.5,
+    "engineering": 5.0, "chemicals": 6.0, "brassware": 3.5,
+    "retail": 1.0, "warehousing": 3.0, "office": 0.5, "other": 3.5,
 }
 # marine cargo: insured value = cargo value x 110% (CIF + 10%), rate in % of insured value
 MARINE_PCT = {
     "leather": 0.25, "footwear": 0.20, "garments": 0.20, "textiles": 0.20, "food_processing": 0.35,
-    "engineering": 0.25, "chemicals": 0.50, "brassware": 0.20, "other": 0.30,
+    "engineering": 0.25, "chemicals": 0.50, "brassware": 0.20,
+    "retail": 0.30, "warehousing": 0.25, "office": 0.20, "other": 0.30,
 }
 MARINE_ROUTE = {"domestic": 1.0, "international": 1.5}
 # liability: rate on the limit of indemnity (%), adjusted for turnover
 LIABILITY_ROL_PCT = {
     "leather": 1.5, "footwear": 1.0, "garments": 0.8, "textiles": 1.0, "food_processing": 1.2,
-    "engineering": 1.2, "chemicals": 2.5, "brassware": 1.0, "other": 1.2,
+    "engineering": 1.2, "chemicals": 2.5, "brassware": 1.0,
+    "retail": 1.5, "warehousing": 1.0, "office": 0.6, "other": 1.2,
 }
 LIABILITY_TURNOVER = [(10 * 10**7, 1.0), (100 * 10**7, 1.25), (float("inf"), 1.6)]  # up to 10 Cr, 100 Cr, more
 
