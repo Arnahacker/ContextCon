@@ -10,8 +10,14 @@ from .decide import resolved, value_of
 
 # very rough sum insured per head, by occupancy. Illustrative only.
 SI_PER_HEAD = {
-    "office": 150_000, "garment_stitching": 250_000, "light_manufacturing": 350_000,
-    "warehouse": 400_000, "leather_tanning": 450_000, "chemical_processing": 600_000,
+    "office": 150_000, "retail_shop": 300_000, "hotel_restaurant": 400_000,
+    "hospital_clinic": 600_000, "electronics_assembly": 450_000,
+    "engineering_workshop": 500_000, "light_manufacturing": 350_000,
+    "food_processing": 450_000, "pharmaceutical": 700_000,
+    "garment_stitching": 250_000, "printing_paper": 450_000, "warehouse": 400_000,
+    "cold_storage": 800_000, "furniture_wood": 350_000, "textile_mill": 600_000,
+    "plastics_rubber": 500_000, "leather_tanning": 450_000,
+    "foundry_forging": 650_000, "chemical_processing": 600_000,
     "unknown": 300_000,
 }
 DEFAULT_HEADCOUNT = 50

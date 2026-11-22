@@ -19,14 +19,33 @@ WORDS = {"zero":0,"one":1,"two":2,"three":3,"four":4,"five":5,"six":6,"seven":7,
          "chhe":6,"chey":6,"saat":7,"aath":8,"nau":9,"das":10,"bees":20,
          "sau":100,"hazaar":1000,"hajaar":1000}
 
-# industry words -> the occupancy key in rules.yaml
+# industry words -> the occupancy key in rules.yaml. ORDER MATTERS: the first
+# match wins, so the more hazardous process is listed first ("leather tannery"
+# must not fall through to leather goods).
 OCCUPANCY = [
+    (("chemical", "dyeing", "dye house", "dyes", "electroplat", "solvent", "paint manufact",
+      "pigment", "fertiliser", "fertilizer", "pesticide", "agrochemical"), "chemical_processing"),
+    (("foundry", "forging", "forge", "casting", "steel melt", "smelt"), "foundry_forging"),
     (("tanner", "tanning", "tannery", "chrome", "leather manufact"), "leather_tanning"),
-    (("chemical", "dyeing", "dye house", "electroplat"), "chemical_processing"),
-    (("garment", "stitching", "apparel", "tailoring", "sewing"), "garment_stitching"),
+    (("plastic", "rubber", "polymer", "tyre", "foam"), "plastics_rubber"),
+    (("spinning", "weaving", "textile mill", "yarn", "cotton mill", "knitting", "textile"),
+     "textile_mill"),
+    (("furniture", "timber", "sawmill", "plywood"), "furniture_wood"),
+    (("cold storage", "cold chain", "refrigerated"), "cold_storage"),
+    (("printing", "paper", "packaging", "carton", "corrugat"), "printing_paper"),
+    (("garment", "stitching", "apparel", "tailoring", "sewing", "hosiery"), "garment_stitching"),
+    (("pharma", "drug", "formulation"), "pharmaceutical"),
+    (("food", "bakery", "dairy", "snack", "spice", "rice mill", "flour", "beverage",
+      "confectioner"), "food_processing"),
     (("warehouse", "godown", "storage", "logistics"), "warehouse"),
-    (("leather", "footwear", "shoe"), "light_manufacturing"),
-    (("office", "software", "it services", "consult"), "office"),
+    (("engineering", "machining", "fabrication", "auto component", "auto parts",
+      "cnc", "machine shop", "sheet metal"), "engineering_workshop"),
+    (("electronic", "pcb"), "electronics_assembly"),
+    (("leather", "footwear", "shoe", "handicraft", "toy", "manufactur"), "light_manufacturing"),
+    (("hotel", "restaurant", "resort", "catering"), "hotel_restaurant"),
+    (("hospital", "clinic", "diagnostic", "nursing home"), "hospital_clinic"),
+    (("retail", "showroom", "jewel"), "retail_shop"),
+    (("office", "software", "it services", "consult", "bpo", "call centre"), "office"),
 ]
 
 

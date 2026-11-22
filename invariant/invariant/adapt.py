@@ -122,6 +122,9 @@ def sites(cd: dict) -> list[str]:
         if not label:
             return
         label = str(label).strip().rstrip(",")
+        # live Snowman Logistics enrich had locations.city == "default"
+        if label.lower() in JUNK_PLACES:
+            return
         if label and label.lower() not in {o.lower() for o in out}:
             out.append(label)
 
@@ -134,6 +137,9 @@ def sites(cd: dict) -> list[str]:
         elif parts:
             add(parts[0])
     return out
+
+
+JUNK_PLACES = {"default", "n/a", "na", "none", "null", "unknown", "-", "--"}
 
 
 def employee_regions(cd: dict, min_staff: int = 2) -> dict[str, int]:
@@ -258,6 +264,20 @@ def jobs(resp: Any, company_id: Optional[int] = None) -> list[dict]:
             "remote": (jd.get("workplace_type") or "").lower() == "remote",
         })
     return out
+
+
+def recent_jobs(jobs: list[dict], as_of: str, max_age_days: int = 365
+                ) -> tuple[list[dict], list[dict]]:
+    """(recent, stale). A 2024 listing says little about the premises in 2026:
+    seen live, a Mumbai listing dated 2024-04-10 was about to load a premium.
+    as_of is an ISO date passed in, so this stays a pure function. Undated
+    listings are treated as stale: no date, no claim about today.
+    """
+    from datetime import date, timedelta
+    cutoff = (date.fromisoformat(as_of) - timedelta(days=max_age_days)).isoformat()
+    recent = [j for j in jobs if j.get("posted") and j["posted"] >= cutoff]
+    stale = [j for j in jobs if not (j.get("posted") and j["posted"] >= cutoff)]
+    return recent, stale
 
 
 def jobs_total(resp: Any) -> Optional[int]:

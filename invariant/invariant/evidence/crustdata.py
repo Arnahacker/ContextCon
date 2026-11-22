@@ -36,14 +36,17 @@ class Crustdata:
 
     # ------------------------------------------------------------------ core
     def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
-        key = request_hash(path, payload)
+        # mock and live answers live in SEPARATE cache namespaces. They used to
+        # share one, so a mock-mode run poisoned later live runs: the fake
+        # /company/search mock was served as live evidence on 22 Nov.
+        key = request_hash(("mock:" if self.mode == "mock" else "") + path, payload)
         hit = cache_get(key)
         if hit is not None:
             self.ledger.add(path, credits=0, cached=True)
             return hit
 
         if self.mode == "mock":
-            data = self._mock(path)
+            data = self._mock(path, payload)
             cache_put(key, data)
             self.ledger.add(path, credits=0, cached=True, note="mock")
             return data
@@ -74,7 +77,14 @@ class Crustdata:
         cache_put(key, data)
         return data
 
-    def _mock(self, path: str) -> dict[str, Any]:
+    def _mock(self, path: str, payload: Optional[dict] = None) -> dict[str, Any]:
+        # 1. a REAL response recorded for exactly this request (the examples on
+        #    screen), so Sudarshan in mock mode shows Sudarshan, not Rajda
+        if payload is not None:
+            rec = MOCKS / "by_request" / f"{request_hash(path, payload)}.json"
+            if rec.exists():
+                return json.loads(rec.read_text(encoding="utf-8"))
+        # 2. one canned response per endpoint
         p = MOCKS / (path.strip("/").replace("/", "_") + ".json")
         if not p.exists():
             raise EvidenceUnavailable(path, f"no mock at {p}")

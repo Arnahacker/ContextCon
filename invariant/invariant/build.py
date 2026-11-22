@@ -8,10 +8,16 @@ from .facts import (Fact, Source, MATCHES, CONTRADICTS, CONSISTENT_UNCONFIRMED,
                     PROXY_RANGE)
 from .normalize import to_occupancy, canonical_name
 
+# job-title words -> the hazardous process they reveal. Fire-relevant only.
 HAZARD_WORDS = {
     "tannery": "tanning", "tanning": "tanning", "chrome": "chrome tanning",
-    "boiler": "boiler operation", "dyeing": "dyeing", "effluent": "effluent treatment",
-    "chemical": "chemical handling", "welding": "hot work", "furnace": "furnace",
+    "boiler": "boiler operation", "dyeing": "dyeing", "dye house": "dyeing",
+    "effluent": "effluent treatment", "chemical": "chemical handling",
+    "welding": "hot work", "welder": "hot work", "furnace": "furnace",
+    "foundry": "molten metal", "forging": "forging", "spray paint": "spray painting",
+    "paint shop": "spray painting", "solvent": "solvent handling",
+    "ammonia": "ammonia refrigeration", "lpg": "LPG handling",
+    "kiln": "kiln firing", "electroplating": "electroplating",
     "night shift": "night shift working",
 }
 
@@ -114,25 +120,92 @@ def hazard_facts(jobs: list[dict], declared_activities: list[str],
     return out
 
 
-def job_location_facts(jobs: list[dict], known_cities: list[str]) -> list[Fact]:
-    """A city the company is hiring in that no address mentions.
+# one place, several spellings and granularities. Seen live: "Greater Bengaluru
+# Area" and "Bengaluru Urban" for a company already known to be in Bengaluru.
+PLACE_ALIASES = {"bangalore": "bengaluru", "bombay": "mumbai", "madras": "chennai",
+                 "calcutta": "kolkata", "gurgaon": "gurugram", "poona": "pune",
+                 "baroda": "vadodara", "cochin": "kochi", "trivandrum": "thiruvananthapuram"}
+PLACE_FILLER = {"greater", "area", "urban", "rural", "district", "city", "region",
+                "metropolitan", "metro", "division", "india", "the", "and", "new"}
+HOME_ALIASES = {"ind": "india", "in": "india", "usa": "united states",
+                "us": "united states", "united states of america": "united states",
+                "uk": "united kingdom", "gb": "united kingdom"}
 
-    Remote listings are skipped: a remote job is not premises.
+
+def _place_tokens(*texts) -> set[str]:
+    out = set()
+    for t in texts:
+        for w in re.findall(r"[a-z]+", (t or "").lower()):
+            w = PLACE_ALIASES.get(w, w)
+            if len(w) > 2 and w not in PLACE_FILLER:
+                out.add(w)
+    return out
+
+
+def _country(c) -> str:
+    c = (c or "").strip().lower()
+    return HOME_ALIASES.get(c, c)
+
+
+def job_location_facts(jobs: list[dict], known_places: list[str],
+                       declared_sites: Optional[int] = None,
+                       home_country: Optional[str] = "India") -> list[Fact]:
+    """Places the company is hiring that no address mentions.
+
+    Conservative on purpose - every rule below was a wrong finding on live data:
+      - remote listings are not premises;
+      - a job abroad is not a premises on an Indian policy: it is context;
+      - "Greater Bengaluru Area" is Bengaluru: places are compared by token,
+        with aliases and filler words removed;
+      - a new city only CONTRADICTS the form if it takes the count past what
+        was declared. Declared 4 sites, seen 1 + 1 hiring city = consistent.
     """
-    out, seen = [], set()
-    known = {c.lower() for c in known_cities}
+    out: list[Fact] = []
+    known = [_place_tokens(k) for k in known_places]
+    home = _country(home_country)
+    new_places, seen_tokens, abroad = [], [], {}
     for j in jobs:
         if j.get("remote"):
             continue
+        country = _country(j.get("country"))
+        if home and country and country != home:
+            abroad.setdefault(j.get("country"), j)
+            continue
         loc = (j.get("location") or "").strip()
         city = (j.get("city") or loc.split(",")[0]).strip()
-        if city and city.lower() not in known and city.lower() not in seen:
-            seen.add(city.lower())
-            out.append(Fact(f"jobsite_{city[:12].replace(' ','_')}", "undeclared_site",
-                            city, "crustdata", UNDECLARED, LOWER_BOUND, "company_id",
-                            Source(what="POST /job/search -> job_listings[].location",
-                                   url=j.get("url"), dated=j.get("posted"),
-                                   quote=loc or city)))
+        # the CITY only: the raw string carries the state, and two cities in
+        # one state ("Roha", "Mumbai" - both Maharashtra) are not one place
+        toks = _place_tokens(city)
+        if not city or not toks:
+            continue
+        if any(toks & k for k in known) or any(toks & s for s in seen_tokens):
+            continue
+        seen_tokens.append(toks)
+        new_places.append((city, loc, j))
+
+    room = max(0, (declared_sites or 0) - len(known_places)) if declared_sites else 0
+    for i, (city, loc, j) in enumerate(new_places):
+        extra = i >= room
+        out.append(Fact(f"jobsite_{city[:12].replace(' ','_')}",
+                        "undeclared_site" if extra else "hiring_location",
+                        city, "crustdata",
+                        UNDECLARED if extra else CONSISTENT_UNCONFIRMED,
+                        LOWER_BOUND, "company_id",
+                        Source(what="POST /job/search -> job_listings[].location",
+                               url=j.get("url"), dated=j.get("posted"),
+                               quote=f"{j.get('title','')[:80]} - {loc or city}"),
+                        note=("hiring here, and it takes the count past the "
+                              f"{declared_sites or 0} sites declared" if extra else
+                              "hiring here; within the number of sites declared")))
+    if abroad:
+        names = sorted(str(k) for k in abroad if k)
+        first = next(iter(abroad.values()))
+        out.append(Fact("hiring_abroad", "hiring_abroad", ", ".join(names), "crustdata",
+                        CONSISTENT_UNCONFIRMED, LOWER_BOUND, "company_id",
+                        Source(what="POST /job/search -> job_listings[].location.country",
+                               url=first.get("url"), dated=first.get("posted"),
+                               quote=f"open roles in {', '.join(names)}"),
+                        note="group operations abroad; not premises on this policy"))
     return out
 
 

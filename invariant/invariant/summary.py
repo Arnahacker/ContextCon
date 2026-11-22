@@ -17,6 +17,8 @@ FIELD_NAMES = {
     "protection": "fire protection", "adverse_event": "past incidents",
     "certification": "a safety certificate", "class_benchmark": "size for this trade",
     "class_percentile": "size for this trade", "headcount_growth_pct": "growth rate",
+    "staff_abroad": "staff in another country", "hiring_location": "a hiring location",
+    "hiring_abroad": "hiring abroad",
 }
 
 VERDICT = {
@@ -44,7 +46,8 @@ def headline(case: dict) -> str:
 
     ident = case.get("identity") or {}
     if ident.get("company"):
-        bits.append(f"We matched the applicant to {ident['company'].get('name')}.")
+        bits.append(f"We matched the applicant to "
+                    f"{(ident['company'].get('name') or '').rstrip('.')}.")
     else:
         bits.append("We could not work out which company this is, so we checked "
                     "the declaration against similar businesses instead.")
@@ -95,6 +98,22 @@ def findings(case: dict) -> list[dict[str, str]]:
             out.append({"tone": "bad",
                         "text": f"There is activity at {f['value']}, which the form "
                                 f"does not mention.",
+                        "source": src(f)[0], "src": src(f)[1]})
+        elif f["field"] == "hiring_location":
+            out.append({"tone": "info",
+                        "text": f"They are hiring in {f['value']}. That fits within the "
+                                f"number of sites declared.",
+                        "source": src(f)[0], "src": src(f)[1]})
+        elif f["field"] == "hiring_abroad":
+            out.append({"tone": "info",
+                        "text": f"Open roles abroad ({f['value']}). Group operations "
+                                f"outside India are not premises on this policy.",
+                        "source": src(f)[0], "src": src(f)[1]})
+        elif f["field"] == "staff_abroad":
+            out.append({"tone": "info",
+                        "text": f"Some staff are recorded in {f['value']}. That is usually "
+                                f"a sales or buying office, not premises, so it does not "
+                                f"change the price. Worth asking whether stock is held there.",
                         "source": src(f)[0], "src": src(f)[1]})
         elif f["field"] == "undeclared_hazard":
             out.append({"tone": "bad",

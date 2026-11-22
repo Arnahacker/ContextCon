@@ -53,8 +53,16 @@ def _anthropic(prompt: str, model: str, key: str, timeout=30.0) -> dict[str, Any
 # ------------------------------------------------------------------- the stub
 _IND = [("tanner", "tannery"), ("tanning", "tannery"), ("leather", "leather"),
         ("garment", "garment stitching"), ("stitching", "garment stitching"),
-        ("footwear", "footwear"), ("textile", "textile"), ("chemical", "chemical"),
-        ("warehouse", "warehouse"), ("pharma", "pharmaceutical")]
+        ("apparel", "apparel"), ("footwear", "footwear"), ("spinning", "spinning mill"),
+        ("textile", "textile"), ("chemical", "chemical"), ("dye", "dyeing"),
+        ("pharma", "pharmaceutical"), ("foundry", "foundry"), ("forging", "forging"),
+        ("plastic", "plastics"), ("rubber", "rubber"), ("furniture", "furniture"),
+        ("cold storage", "cold storage"), ("warehouse", "warehouse"),
+        ("logistics", "logistics"), ("food", "food processing"), ("dairy", "dairy"),
+        ("bakery", "bakery"), ("printing", "printing"), ("packaging", "packaging"),
+        ("auto component", "auto components"), ("engineering", "engineering"),
+        ("electronic", "electronics"), ("hotel", "hotel"), ("restaurant", "restaurant"),
+        ("hospital", "hospital"), ("software", "software"), ("retail", "retail")]
 _WORDNUM = (r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
             r"fifteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|"
             r"hundred|thousand|lakh|lac|crore|"
@@ -117,8 +125,12 @@ def _stub(prompt: str) -> dict[str, Any]:
                   r"((?:rs\.?|\u20b9)?\s*[\d.,]+\s*(?:cr|crore|lakh|lac|k)?)", p)
     if m:
         out["sum_insured_inr"] = money_to_int(m.group(1))
-    m = re.search(r"([A-Z][A-Za-z&.\- ]{2,40}?(?:Pvt\.? Ltd\.?|Private Limited|Limited|"
-                  r"Ltd\.?|LLP|Industries|Exports|Tanneries))", prompt)
+    # legal suffix first: "Rajda Industries Exports Pvt Ltd" must not stop at
+    # "Rajda Industries" - live identify has four tied Rajdas, and only the
+    # full name picks the right one
+    m = (re.search(r"([A-Z][A-Za-z&.\- ]{2,60}?(?:Pvt\.? Ltd\.?|Private Limited|Limited|"
+                   r"Ltd\.?|LLP))(?![A-Za-z])", prompt)
+         or re.search(r"([A-Z][A-Za-z&.\- ]{2,40}?(?:Industries|Exports|Tanneries))", prompt))
     if m:
         out["company_name"] = m.group(1).strip()
     if "workmen" in p or " wc " in p:

@@ -1,6 +1,7 @@
 """Every call, what it cost, whether it was cached. The cost meter reads this."""
 from __future__ import annotations
 from dataclasses import dataclass, field, asdict
+from typing import Callable, Optional
 
 
 @dataclass
@@ -18,9 +19,19 @@ class Entry:
 @dataclass
 class Ledger:
     entries: list[Entry] = field(default_factory=list)
+    # called with each Entry as it is recorded, so the screen can show calls
+    # live. Observes only: it can never change what was recorded.
+    listener: Optional[Callable[[Entry], None]] = field(default=None, repr=False,
+                                                         compare=False)
 
     def add(self, name, credits=0.0, cached=False, ms=0, ok=True, note=""):
-        self.entries.append(Entry(name, credits, cached, ms, ok, note))
+        e = Entry(name, credits, cached, ms, ok, note)
+        self.entries.append(e)
+        if self.listener:
+            try:
+                self.listener(e)
+            except Exception:
+                pass
 
     @property
     def credits(self) -> float:

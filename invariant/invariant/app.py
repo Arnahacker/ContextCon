@@ -1,12 +1,13 @@
 from __future__ import annotations
-import pathlib, traceback
+import json, pathlib, queue, threading, traceback
 from typing import Any, Optional
 
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
-from .pipeline import run, gap_table, load_rules
+from .pipeline import run, gap_table, load_rules, apply_rules_patch, BadRulesPatch
+from .examples import EXAMPLES
 from .rewrites import REWRITES, HERO
 from .approvals import ApprovalQueue
 from .cases import GOLDEN, check_case
@@ -20,6 +21,20 @@ class RunIn(BaseModel):
     prompt: str
     run_id: Optional[str] = None
     answers: dict[str, Any] = {}
+    # edited numbers from the Rules tab: {"loadings.UNDECLARED_HAZARD.multiplier": 1.6}
+    rules_patch: dict[str, Any] = {}
+
+
+def _error_case(e: Exception) -> dict:
+    return {"error": str(e), "trace": traceback.format_exc()[-800:],
+            "decision": {"outcome": "hold", "hold_reason": "internal_error",
+                         "premium_inr": 0, "gate": {"blocked": True, "missing": []},
+                         "steps": [], "questions": [], "would_flip_if": [],
+                         "hash": "", "rules_version": "", "notes": [str(e)]}}
+
+
+def _rules_for(body: RunIn) -> dict:
+    return apply_rules_patch(load_rules(), body.rules_patch or {})
 
 
 @app.get("/")
@@ -32,16 +47,52 @@ def home():
 @app.post("/api/run")
 def api_run(body: RunIn):
     try:
-        case = run(body.prompt, run_id=body.run_id, answers=body.answers)
+        case = run(body.prompt, run_id=body.run_id, answers=body.answers,
+                   rules=_rules_for(body))
+    except BadRulesPatch as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
     except Exception as e:                      # never 500 at a judge
-        return JSONResponse(status_code=200, content={
-            "error": str(e), "trace": traceback.format_exc()[-800:],
-            "decision": {"outcome": "hold", "hold_reason": "internal_error",
-                         "premium_inr": 0, "gate": {"blocked": True, "missing": []},
-                         "steps": [], "questions": [], "would_flip_if": [],
-                         "hash": "", "rules_version": "", "notes": [str(e)]}})
+        return JSONResponse(status_code=200, content=_error_case(e))
     case["gap_table"] = gap_table(case)
     return case
+
+
+@app.post("/api/run/stream")
+def api_run_stream(body: RunIn):
+    """Same as /api/run, but streams each stage and each Crustdata call as it
+    happens (NDJSON), then the full case as the last line."""
+    try:
+        rules = _rules_for(body)
+    except BadRulesPatch as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+    q: "queue.Queue[Optional[dict]]" = queue.Queue()
+
+    def work():
+        try:
+            case = run(body.prompt, run_id=body.run_id, answers=body.answers,
+                       rules=rules, on_event=q.put)
+            case["gap_table"] = gap_table(case)
+            q.put({"type": "case", "case": case})
+        except Exception as e:
+            q.put({"type": "case", "case": _error_case(e)})
+        finally:
+            q.put(None)
+
+    threading.Thread(target=work, daemon=True).start()
+
+    def gen():
+        while True:
+            ev = q.get()
+            if ev is None:
+                return
+            yield json.dumps(ev, default=str) + "\n"
+
+    return StreamingResponse(gen(), media_type="application/x-ndjson")
+
+
+@app.get("/api/examples")
+def api_examples():
+    return {"examples": EXAMPLES}
 
 
 @app.get("/api/invariance")

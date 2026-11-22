@@ -1,7 +1,7 @@
 # ILLUSTRATIVE RATE CARD. Indian fire cover is de-tariffed: there is no national
 # table. These ranges come from published sources and must be labelled
 # "illustrative" on screen. Never quote a real customer from this file.
-version: "2026.11.22.3"
+version: "2026.11.22.4"
 
 gst_rate: 0.18
 minimum_premium_inr: 5000
@@ -12,26 +12,106 @@ tolerances:
   # record BELOW declared is never a contradiction: LinkedIn undercounts factory floors
 
 # ---- gate: which fields must be resolved before we may price
+# tier1 is the fallback; each cover below lists what IT needs instead
+# (workmen's comp has no sum insured, marine is rated on shipments).
 gate:
   tier0: [company_identity]                       # blocks everything
-  tier1: [cover_type, sum_insured_inr, occupancy] # blocks pricing
+  tier1: [cover_type, sum_insured_inr, occupancy] # blocks pricing (fallback)
   tier2: [claims_history, construction, protection]  # never blocks
+
+# ---- lines of cover. basis = the declared amount the rate applies to.
+#      rate_table = which table below; per = rate is per this many rupees.
+covers:
+  fire:
+    label: "Fire & allied perils"
+    basis: sum_insured_inr
+    rate_table: occupancy_rate_per_mille
+    per: 1000
+    needs: [cover_type, sum_insured_inr, occupancy]
+  burglary:
+    label: "Burglary & theft"
+    basis: sum_insured_inr
+    rate_table: burglary_rate_per_mille
+    per: 1000
+    needs: [cover_type, sum_insured_inr, occupancy]
+  marine_cargo:
+    label: "Marine cargo (annual open policy)"
+    basis: annual_shipments_inr
+    rate_table: marine_rate_per_mille
+    per: 1000
+    needs: [cover_type, annual_shipments_inr, occupancy]
+  wc:
+    label: "Workmen's compensation"
+    basis: annual_wages_inr
+    rate_table: wc_rate_per_100_wages
+    per: 100
+    needs: [cover_type, annual_wages_inr, occupancy]
 
 # ---- fire: rate per mille of sum insured, by occupancy
 occupancy_rate_per_mille:
   office: 0.08
-  garment_stitching: 0.75
+  retail_shop: 0.30
+  hotel_restaurant: 0.45
+  hospital_clinic: 0.25
+  electronics_assembly: 0.40
+  engineering_workshop: 0.45
   light_manufacturing: 0.55
+  food_processing: 0.65
+  pharmaceutical: 0.70
+  garment_stitching: 0.75
+  printing_paper: 0.85
   warehouse: 0.80
+  cold_storage: 0.90
+  furniture_wood: 1.10
+  textile_mill: 1.05
+  plastics_rubber: 1.15
   leather_tanning: 1.20
+  foundry_forging: 1.25
   chemical_processing: 1.65
   unknown: 1.00
 
-# ---- workmen's compensation: rate per 100 of annual wages, by category
+# ---- burglary: rate per mille of sum insured (stock + contents)
+burglary_rate_per_mille:
+  office: 0.40
+  retail_shop: 1.20
+  electronics_assembly: 1.50
+  pharmaceutical: 1.10
+  warehouse: 1.00
+  leather_tanning: 0.60
+  light_manufacturing: 0.70
+  garment_stitching: 0.90
+  unknown: 0.90
+
+# ---- marine cargo: rate per mille of annual shipment value
+marine_rate_per_mille:
+  electronics_assembly: 1.40
+  pharmaceutical: 1.20
+  food_processing: 1.10
+  chemical_processing: 1.60
+  garment_stitching: 0.80
+  light_manufacturing: 0.75
+  leather_tanning: 0.85
+  unknown: 1.00
+
+# ---- workmen's compensation: rate per 100 of annual wages, by occupancy
 wc_rate_per_100_wages:
-  clerical: 2.45
-  machinist: 12.10
-  unknown: 8.00
+  office: 0.25
+  retail_shop: 0.60
+  hotel_restaurant: 1.20
+  electronics_assembly: 1.10
+  garment_stitching: 1.40
+  light_manufacturing: 1.80
+  food_processing: 2.00
+  warehouse: 2.40
+  cold_storage: 2.60
+  textile_mill: 2.50
+  engineering_workshop: 3.20
+  leather_tanning: 3.50
+  plastics_rubber: 3.20
+  furniture_wood: 3.80
+  chemical_processing: 4.20
+  foundry_forging: 5.50
+  unknown: 3.00
 
 # ---- named multipliers. Each must be tied to the facts that triggered it.
 loadings:
@@ -43,14 +123,17 @@ loadings:
   NO_SAFETY_FUNCTION:       {multiplier: 1.10, explain: "No safety or EHS role found at a site of this size."}
   RAPID_GROWTH:             {multiplier: 1.12, explain: "Headcount grew fast; controls typically lag growth."}
   CLAIMS_HISTORY_UNKNOWN:   {multiplier: 1.15, explain: "No claims history available and none supplied."}
-  CONSTRUCTION_UNKNOWN:     {multiplier: 1.08, explain: "Construction class not established."}
-  PROTECTION_UNKNOWN:       {multiplier: 1.10, explain: "Fire protection not established."}
+  CONSTRUCTION_UNKNOWN:     {multiplier: 1.08, explain: "Construction class not established.", applies_to: [fire, burglary]}
+  PROTECTION_UNKNOWN:       {multiplier: 1.10, explain: "Fire protection not established.", applies_to: [fire]}
 
 discounts:
   ISO_45001:  {multiplier: 0.92, explain: "Certified occupational health and safety management."}
   ISO_14001:  {multiplier: 0.96, explain: "Certified environmental management."}
   LWG_AUDIT:  {multiplier: 0.95, explain: "Leather Working Group audited."}
-  SPRINKLERED: {multiplier: 0.85, explain: "Sprinkler protection confirmed."}
+  SPRINKLERED: {multiplier: 0.85, explain: "Sprinkler protection confirmed.", applies_to: [fire]}
+  SA8000:     {multiplier: 0.97, explain: "SA8000 social accountability audit: labour and safety practices independently checked."}
+  BSCI:       {multiplier: 0.98, explain: "amfori BSCI audit, which includes workplace health and safety."}
+  WRAP:       {multiplier: 0.98, explain: "WRAP certified: audited health, safety and fire practices in production."}
 
 # ---- hard stops
 decline_rules:
@@ -63,7 +146,9 @@ decline_rules:
 question_text:
   company_identity: "Which company is this? Legal name, GST number or website."
   sum_insured_inr:  "What sum insured do you need? Building plus machinery plus stock."
-  cover_type:       "Which cover? Fire/property or workmen's compensation."
+  cover_type:       "Which cover? Fire, burglary, marine cargo or workmen's compensation."
+  annual_wages_inr: "What is the total annual wage roll?"
+  annual_shipments_inr: "What is the total value shipped in a year?"
   occupancy:        "What exactly happens at the premises?"
   claims_history:   "Any claims in the last five years? Amount and cause."
   construction:     "What are the walls and roof made of?"
@@ -73,6 +158,8 @@ records_we_need:
   company_identity: "MCA / GST registration, or the company's own website"
   sum_insured_inr:  "No public record exists. Only the applicant can answer."
   cover_type:       "No public record exists. Only the applicant can answer."
+  annual_wages_inr: "Payroll / ESI returns. Not public."
+  annual_shipments_inr: "Export turnover, shipping bills. Not reliably public."
   occupancy:        "Pollution board consent, job ads, or the company's own site"
   claims_history:   "Prior insurer's loss run. Not public."
   construction:     "Site survey or municipal records. Not reliably public."

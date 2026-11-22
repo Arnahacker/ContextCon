@@ -2,276 +2,505 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>INVARIANT — underwriting desk</title>
 <style>
-:root{--bg:#0b0d12;--panel:#141822;--line:#232a39;--ink:#e8ecf4;--dim:#8d97ab;
---bad:#ff6b6b;--warn:#ffb648;--good:#4ade80;--accent:#6b5cff}
+:root{--bg:#0b0d12;--panel:#141822;--panel2:#10141c;--line:#232a39;--line2:#1b2130;
+--ink:#e8ecf4;--ink2:#b9c1d1;--dim:#8d97ab;--mute:#6c7689;
+--bad:#ff6b6b;--warn:#ffb648;--good:#4ade80;--accent:#6b5cff;
+--up:#e66767;--down:#3987e5;--total:#4a5163}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 ui-sans-serif,system-ui,Segoe UI,Roboto}
-header{padding:13px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px}
-h1{font-size:16px;margin:0;letter-spacing:.14em}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:14px/1.55 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:rgba(11,13,18,.92);backdrop-filter:blur(6px);
+ padding:12px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-size:15px;margin:0;letter-spacing:.16em}
 .sub{color:var(--dim);font-size:12px}
-nav{margin-left:auto;display:flex;gap:6px}
+nav{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
 nav button{background:transparent;border:1px solid var(--line);color:var(--dim);
-padding:6px 14px;border-radius:7px;cursor:pointer;font-size:13px}
+ padding:6px 14px;border-radius:7px;cursor:pointer;font-size:13px}
 nav button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-main{padding:18px 22px;max-width:1200px}
-.row{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:15px 17px;margin-bottom:14px}
-.card h2{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 0 3px}
-.card .hint{color:#6c7689;font-size:11.5px;margin:0 0 11px;font-style:italic}
+.badge{font:11px ui-monospace,monospace;color:var(--dim);border:1px solid var(--line);border-radius:99px;padding:2px 9px}
+.badge.edited{color:var(--warn);border-color:#5a4520;background:#2a2010}
+main{padding:18px 22px 60px;max-width:1280px;margin:0 auto}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+@media (max-width:980px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.card h2{font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--dim);margin:0 0 3px;font-weight:600}
+.hint{color:var(--mute);font-size:12px;margin:0 0 12px}
 textarea,input,select{width:100%;background:#0a0c11;color:var(--ink);border:1px solid var(--line);
-border-radius:8px;padding:10px;font:13px/1.5 ui-monospace,monospace}
-button.go{background:var(--accent);border:0;color:#fff;padding:9px 20px;border-radius:8px;
-cursor:pointer;font-size:13px;font-weight:600}
+ border-radius:8px;padding:10px;font:13px/1.5 ui-monospace,monospace}
+textarea:focus,input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+button.go{background:var(--accent);border:0;color:#fff;padding:9px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+button.go:disabled{opacity:.5;cursor:wait}
 button.go.sm{padding:7px 14px;font-size:12px}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--ink2);padding:7px 13px;border-radius:8px;cursor:pointer;font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 2px}
+.chip{background:var(--panel2);border:1px solid var(--line);color:var(--ink2);border-radius:99px;
+ padding:5px 12px;font-size:12px;cursor:pointer}
+.chip:hover{border-color:var(--accent);color:var(--ink)}
+.chip small{color:var(--mute);margin-left:5px}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;color:var(--dim);font-weight:500;font-size:11px;text-transform:uppercase;
-letter-spacing:.07em;padding:5px 9px;border-bottom:1px solid var(--line)}
-td{padding:8px 9px;border-bottom:1px solid #1b2130;vertical-align:top}
+th{text-align:left;color:var(--dim);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.07em;padding:6px 9px;border-bottom:1px solid var(--line)}
+td{padding:9px;border-bottom:1px solid var(--line2);vertical-align:top}
 tr:last-child td{border-bottom:0}
-.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap}
 .contradicts{background:#3a1620;color:var(--bad)} .undeclared{background:#3a2a12;color:var(--warn)}
 .matches,.consistent_unconfirmed{background:#13301f;color:var(--good)}
 .cannot_verify,.unchecked{background:#1d2436;color:var(--dim)}
-.outcome{font-size:26px;font-weight:700;text-transform:uppercase;line-height:1.1}
-.refer{color:var(--warn)} .quote{color:var(--good)} .decline,.hold{color:var(--bad)}
-.state{font-size:12px;color:var(--dim);margin-top:3px}
-.prem{font-size:23px;font-weight:600;margin-top:9px}
-.headline{font-size:15px;line-height:1.55;margin:9px 0 2px}
+.outcome{font-size:30px;font-weight:750;text-transform:uppercase;line-height:1.05;letter-spacing:.02em}
+.o-refer{color:var(--warn)} .o-quote{color:var(--good)} .o-decline,.o-hold{color:var(--bad)}
+.state{font-size:12.5px;color:var(--dim);margin-top:4px}
+.prem{font-size:26px;font-weight:650;margin-top:10px;font-variant-numeric:tabular-nums}
+.prem small{font-size:12px;color:var(--dim);font-weight:400}
+.headline{font-size:15px;line-height:1.6;margin:10px 0 4px;color:var(--ink2)}
 .muted{color:var(--dim);font-size:12px}
-.find{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #1b2130}
-.find:last-child{border-bottom:0}
-.dot{flex:0 0 7px;height:7px;border-radius:99px;margin-top:7px}
-.dot.bad{background:var(--bad)} .dot.good{background:var(--good)} .dot.info{background:var(--dim)}
-.find .t{flex:1} .find .s{color:var(--dim);font-size:11px;margin-top:3px}
-.why{font-size:13px;padding:3px 0;color:var(--dim)} .why b{color:var(--ink)}
-.q{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:9px}
-.q .lbl{font-size:13px;margin-bottom:6px} .q .w{color:var(--good);font-weight:600}
-.flip{border-left:2px solid var(--accent);padding:6px 0 6px 11px;margin-bottom:9px}
 .mono{font-family:ui-monospace,monospace;font-size:12px}
 .ok{color:var(--good)} .no{color:var(--bad)}
-a{color:var(--accent)}
-#drawer{position:fixed;right:0;top:0;bottom:0;width:430px;background:#11151e;
-border-left:1px solid var(--line);padding:20px;overflow:auto;transform:translateX(100%);
-transition:.18s;z-index:9}
+a{color:#9b90ff}
+.src{color:#9b90ff;cursor:pointer;font-size:11.5px;text-decoration:none;border-bottom:1px dotted #4b4290}
+.src:hover{color:#c4bdff}
+.find{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2)}
+.find:last-child{border-bottom:0}
+.dot{flex:0 0 8px;height:8px;border-radius:99px;margin-top:7px}
+.dot.bad{background:var(--bad)} .dot.good{background:var(--good)} .dot.info{background:var(--dim)}
+.find .t{flex:1} .find .s{margin-top:3px}
+.q{border:1px solid var(--line);border-radius:9px;padding:11px 12px;margin-bottom:9px;background:var(--panel2)}
+.q .lbl{font-size:13px;margin-bottom:7px} .q .w{color:var(--good);font-weight:600;font-size:12px;margin-left:6px}
+.flip{border-left:2px solid var(--accent);padding:6px 0 6px 11px;margin-bottom:9px}
+.banner{border:1px solid #5a4520;background:#2a2010;color:var(--warn);border-radius:8px;padding:8px 11px;font-size:12.5px;margin:10px 0 0}
+.empty{color:var(--mute);font-size:12.5px;padding:6px 0}
+/* trace */
+.trace{font:12px/1.5 ui-monospace,monospace}
+.ev{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px dashed var(--line2);animation:in .25s ease}
+.ev:last-child{border-bottom:0}
+@keyframes in{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+.ev .k{flex:0 0 52px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em}
+.k.live{color:var(--good)} .k.cached{color:var(--dim)} .k.fail{color:var(--bad)} .k.stage{color:#9b90ff}
+.ev .n{flex:1;color:var(--ink2);word-break:break-word}
+.ev .m{color:var(--dim);white-space:nowrap}
+.spin{display:inline-block;width:10px;height:10px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:99px;animation:sp .8s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.meter{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.meter div{background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:6px 8px}
+.meter b{display:block;font-size:15px;font-variant-numeric:tabular-nums}
+.meter span{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+/* waterfall */
+.wf{margin-top:4px}
+.wf-row{display:grid;grid-template-columns:170px minmax(0,1fr) 128px;gap:10px;align-items:center;padding:5px 0;cursor:pointer;border-radius:6px}
+.wf-row:hover{background:#181d29}
+.wf-row .l{font-size:12.5px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wf-row .l small{display:block;color:var(--mute);font-size:11px}
+.wf-track{position:relative;height:18px;border-left:1px solid var(--line)}
+.wf-bar{position:absolute;top:1px;height:16px;border-radius:4px}
+.wf-bar.base,.wf-bar.tax{background:var(--total)}
+.wf-bar.load{background:var(--up)} .wf-bar.discount{background:var(--down)}
+.wf-bar.final{background:#7c8499}
+.wf-row .v{text-align:right;font:12px ui-monospace,monospace;color:var(--ink2);font-variant-numeric:tabular-nums}
+.wf-row .v small{display:block;color:var(--mute)}
+.wf-row.final{border-top:1px solid var(--line);margin-top:4px;padding-top:9px}
+.wf-row.final .l,.wf-row.final .v{color:var(--ink);font-weight:650}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--dim);margin:2px 0 8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+#tip{position:fixed;pointer-events:none;background:#0a0c11;border:1px solid var(--line);border-radius:8px;
+ padding:8px 10px;font-size:12px;max-width:300px;z-index:20;display:none;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+#tip b{display:block;margin-bottom:2px}
+/* drawer */
+#drawer{position:fixed;right:0;top:0;bottom:0;width:min(460px,100vw);background:#11151e;border-left:1px solid var(--line);
+ padding:20px;overflow:auto;transform:translateX(100%);transition:.18s;z-index:30}
 #drawer.open{transform:none}
-.kv{margin:11px 0}.kv .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.07em}
+.srcbox{border:1px solid var(--line);border-radius:10px;padding:4px 12px 10px;margin:12px 0;background:var(--panel2)}
+.kv{margin:9px 0}.kv .k{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em}
 .kv .v{margin-top:2px;word-break:break-word}
-blockquote{margin:6px 0;padding:9px 11px;background:#0a0c11;border-left:2px solid var(--accent);
-border-radius:0 6px 6px 0;font-size:12.5px}
-details summary{cursor:pointer;color:var(--dim);font-size:12px;margin-top:6px}
+blockquote{margin:6px 0;padding:9px 11px;background:#0a0c11;border-left:2px solid var(--accent);border-radius:0 6px 6px 0;font-size:12.5px}
+details summary{cursor:pointer;color:var(--dim);font-size:12px;margin-top:8px}
 .hidden{display:none}
-.meter{display:flex;gap:16px;font-size:12px;color:var(--dim)}.meter b{color:var(--ink)}
+/* rules */
+.rules-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
+.rtable td{padding:5px 8px} .rtable td:first-child{font-size:12.5px;color:var(--ink2)}
+.rtable input{width:96px;padding:5px 7px;text-align:right}
+.rtable input.changed{border-color:var(--warn);background:#2a2010}
+.rtable .x{color:var(--mute);font-size:11px}
 </style></head><body>
 <header><h1>INVARIANT</h1>
-<span class="sub">the same answer however the request is worded</span>
-<nav><button class="on" data-tab="desk">Underwrite</button>
+<span class="sub">the same decision however it is worded — a dated source behind every reason</span>
+<span class="badge" id="verBadge">rules —</span>
+<nav><button class="on" data-tab="desk">Underwrite</button><button data-tab="rules">Rules</button>
  <button data-tab="inv">Invariance</button><button data-tab="tests">Tests</button></nav></header>
 
 <main>
+<!-- =============================================================== DESK -->
 <section id="desk">
  <div class="card">
   <h2>Submission</h2>
-  <p class="hint">Type what a broker would send. Two lines is enough — no forms, no files.</p>
+  <p class="hint">Type what a broker would send. Two lines is enough — no forms, no files. Or pick an example: each one is a hypothetical submission checked against live Crustdata records.</p>
   <textarea id="prompt" rows="3">A leather exporter applying for cover says it has 120 employees across three units. Check that against public data and tell me what does not match.</textarea>
-  <div style="margin-top:10px;display:flex;gap:9px;align-items:center">
-    <button class="go" onclick="go()">Underwrite</button>
+  <div class="chips" id="examples"></div>
+  <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <button class="go" id="goBtn" onclick="go()">Underwrite</button>
     <span class="muted" id="status"></span></div>
  </div>
 
- <div class="row">
+ <div class="grid">
   <div>
    <div class="card" id="decisionCard"><h2>Decision</h2>
-     <p class="hint">What we would do, the price, and why — in one place.</p>
-     <div class="muted">Nothing run yet.</div></div>
+     <div class="empty">Nothing run yet. Pick an example above or type a submission.</div></div>
 
    <div class="card" id="askCard" style="display:none">
     <h2>Answer these to get a real price</h2>
-    <p class="hint">Only things no public record can answer. Each shows what answering it is worth.</p>
+    <p class="hint">Only what no public record can answer. Each shows what answering it is worth.</p>
     <div id="qs"></div>
     <button class="go sm" onclick="submitAnswers()">Reprice</button>
    </div>
 
-   <div class="card"><h2>What we found</h2>
-     <p class="hint">Every line is a fact from a record. Click the source to see the exact field and date.</p>
-     <div id="findings" class="muted">—</div></div>
+   <div class="card"><h2>How the price is built</h2>
+     <p class="hint" id="whyHint">Base rate for the trade, then each named loading or discount, then GST. Click a step to see the facts that caused it.</p>
+     <div id="why"><div class="empty">—</div></div></div>
 
-   <div class="card"><h2>Why this price</h2>
-     <p class="hint">The base rate for the trade, then each named loading or discount.</p>
-     <div id="why" class="muted">—</div>
-     <details><summary>the full table — what was said, what the record says</summary>
-       <div id="gap" style="margin-top:9px">—</div></details></div>
+   <div class="card"><h2>What they said vs what the record says</h2>
+     <p class="hint">Each check against a public record. Click a source to see the exact field, quote and date.</p>
+     <div id="gap"><div class="empty">—</div></div></div>
+
+   <div class="card"><h2>What we found</h2>
+     <p class="hint">In plain words, worst first.</p>
+     <div id="findings"><div class="empty">—</div></div></div>
 
    <div class="card"><h2>What would change my mind</h2>
-     <p class="hint">The facts that would flip the outcome. Only possible because the decision is a plain function of the facts.</p>
-     <div id="flips" class="muted">—</div></div>
+     <p class="hint">Each line re-runs the decision with one fact changed. Possible only because the decision is a plain function of the facts.</p>
+     <div id="flips"><div class="empty">—</div></div></div>
   </div>
 
   <div>
+   <div class="card"><h2>Live call trace</h2>
+     <p class="hint">Each step and each Crustdata call, as it happens.</p>
+     <div id="trace" class="trace"><div class="empty">—</div></div>
+     <div id="meter"></div></div>
    <div class="card"><h2>Who we think this is</h2>
-     <p class="hint">Rung 0 = named and matched. Rung 2 = not identified, so we check the trade instead.</p>
-     <div id="ident" class="muted">—</div></div>
+     <div id="ident"><div class="empty">—</div></div></div>
    <div class="card"><h2>Not checked</h2>
-     <p class="hint">Things no public record answers. We price them rather than guess them.</p>
-     <div id="unchecked" class="muted">—</div></div>
-   <div class="card"><h2>Cost of this run</h2>
-     <p class="hint">Every API call, its credits, and whether it came from cache.</p>
-     <div id="meter" class="muted">—</div></div>
+     <p class="hint">No public record answers these. We price them rather than guess them.</p>
+     <div id="unchecked"><div class="empty">—</div></div></div>
   </div>
  </div>
 </section>
 
+<!-- =============================================================== RULES -->
+<section id="rules" class="hidden">
+ <div class="card">
+  <h2>The rules, editable</h2>
+  <p class="hint">Every number the decision uses lives here. Change one and re-run: the decision moves, and so does the rules version — so the hash still says exactly which rules produced it. Only existing numbers can change: no new rules, no text, nothing a model writes. These rates are <b>illustrative</b>: Indian fire cover is de-tariffed and has no public rate table.</p>
+  <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
+   <button class="go sm" onclick="applyRules()">Apply and re-run the current case</button>
+   <button class="ghost" onclick="resetRules()">Reset to the rule book</button>
+   <span class="muted" id="rulesStatus"></span></div>
+  <div id="rulesBanner"></div>
+ </div>
+ <div class="rules-grid" id="rulesGrid"><div class="empty">loading…</div></div>
+</section>
+
+<!-- =============================================================== INVARIANCE -->
 <section id="inv" class="hidden"><div class="card">
  <h2>Eight wordings, one decision</h2>
- <p class="hint">The same risk written eight ways. The hash is computed from the facts and the rules
-  version only — never from the wording. All eight hashes must match. If they do not, the wording is
-  reaching the decision, which is a bug to fix rather than hide.</p>
+ <p class="hint">The same risk written eight ways. The hash is computed from the facts and the rules version only — never from the wording. All eight must match. If they do not, the wording is reaching the decision: a bug to fix, not hide.</p>
  <button class="go" onclick="invariance()">Run all eight</button>
- <div id="invout" style="margin-top:13px" class="muted">Not run yet.</div>
+ <div id="invout" style="margin-top:13px" class="empty">Not run yet.</div>
 </div></section>
 
+<!-- =============================================================== TESTS -->
 <section id="tests" class="hidden"><div class="card">
  <h2>Golden cases</h2>
- <p class="hint">Expected answers written down before the code. Each case checks one rule — including
-  the one that must NOT fire, the injection attempt, and the prompt with no company in it.</p>
+ <p class="hint">Expected answers written down before the code. Each case checks one rule — including the one that must NOT fire, the injection attempt, and the prompt with no company in it.</p>
  <button class="go" onclick="tests()">Run all</button>
- <div id="testout" style="margin-top:13px" class="muted">Not run yet.</div>
+ <div id="testout" style="margin-top:13px" class="empty">Not run yet.</div>
 </div></section>
 </main>
 
-<div id="drawer"><button class="go sm" onclick="drawer.classList.remove('open')">close</button>
- <h3 style="font-size:14px;margin:14px 0 4px">Where this came from</h3>
+<div id="tip"></div>
+<div id="drawer"><button class="ghost" onclick="drawer.classList.remove('open')">close</button>
+ <h3 style="font-size:14px;margin:14px 0 2px">Where this came from</h3>
  <div id="srcbody"></div></div>
 
 <script>
-const $=s=>document.querySelector(s), drawer=$('#drawer');
-let CASE=null, ANSWERS={};
+const $=s=>document.querySelector(s), drawer=$('#drawer'), tip=$('#tip');
+let CASE=null, ANSWERS={}, RULES=null, PATCH={};
+const TABS=['desk','rules','inv','tests'];
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on');
-  ['desk','inv','tests'].forEach(t=>$('#'+t).classList.toggle('hidden',t!==b.dataset.tab));});
-const rs=n=>n==null?'—':'₹'+Number(n).toLocaleString('en-IN');
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  b.classList.add('on'); TABS.forEach(t=>$('#'+t).classList.toggle('hidden',t!==b.dataset.tab));});
+const rs=n=>n==null?'—':'₹'+Math.round(Number(n)).toLocaleString('en-IN');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const NAMES={headcount:'Staff numbers',sites:'Number of premises',undeclared_site:'Extra location',
+ undeclared_hazard:'Hazardous process',occupancy:'What happens on site',sum_insured_inr:'Sum insured',
+ cover_type:'Type of cover',company_identity:'Which company',claims_history:'Past claims',
+ construction:'Building construction',protection:'Fire protection',adverse_event:'Past incidents',
+ certification:'Certification',class_benchmark:'Size for this trade',class_percentile:'Size vs. trade',
+ headcount_growth_pct:'Headcount growth',staff_abroad:'Staff abroad',hiring_location:'Hiring location',
+ hiring_abroad:'Hiring abroad',company_name:'Legal name',year_founded:'Founded',
+ employee_count_range:'Size band',stated_activities:'What they say they do',role_mix:'Who works there',
+ annual_wages_inr:'Annual wages',evidence_unavailable:'Source unavailable',
+ stale_job_listings:'Old job listings (not used)'};
+const nm=f=>NAMES[f]||f.replace(/_/g,' ');
+const STATUS={contradicts:'contradicts',undeclared:'not declared',matches:'matches',
+ consistent_unconfirmed:'consistent',cannot_verify:"can't verify",unchecked:'unchecked'};
+const fmtVal=(fld,v)=>v==null?'—':(/_inr$/.test(fld)&&!isNaN(v))?rs(v):String(v).replace(/_/g,' ');
 
-function showSrc(s){
-  s=s||{};
-  $('#srcbody').innerHTML=`
-   <div class="kv"><div class="k">Field</div><div class="v mono">${esc(s.what)}</div></div>
-   ${s.quote?`<div class="kv"><div class="k">What the record says</div>
-      <blockquote>${esc(s.quote)}</blockquote></div>`:''}
-   ${s.url?`<div class="kv"><div class="k">Open it</div>
-      <div class="v"><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a></div></div>`:''}
+// ------------------------------------------------------------- sources drawer
+let SRCS=[];
+function srcLink(s,label){SRCS.push(s);const i=SRCS.length-1;
+  return `<a class="src" onclick="openSrc([${i}]);return false" href="#">${esc(label||srcLabel(s))}</a>`;}
+function srcLabel(s){s=s||{};const when=s.dated||(s.fetched||'').slice(0,10);
+  return (s.what||'source')+(when?' · '+when:'');}
+function openSrc(idx,title){
+  const list=idx.map(i=>typeof i==='number'?{s:SRCS[i]}:i);
+  $('#srcbody').innerHTML=(title?`<div class="muted" style="margin-bottom:4px">${esc(title)}</div>`:'')+
+   list.map(({s,f})=>{s=s||{};return `<div class="srcbox">
+   ${f?`<div class="kv"><div class="k">Fact</div><div class="v">${esc(nm(f.field))}: <b>${esc(fmtVal(f.field,f.value))}</b>
+       <span class="pill ${f.status}">${STATUS[f.status]||f.status}</span></div></div>`:''}
+   <div class="kv"><div class="k">Field</div><div class="v mono">${esc(s.what||'—')}</div></div>
+   ${s.quote?`<div class="kv"><div class="k">What the record says</div><blockquote>${esc(s.quote)}</blockquote></div>`:''}
+   ${s.url?`<div class="kv"><div class="k">Open it</div><div class="v"><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url.length>90?s.url.slice(0,90)+'…':s.url)}</a></div></div>`:''}
    ${s.dated?`<div class="kv"><div class="k">Record dated</div><div class="v">${esc(s.dated)}</div></div>`:''}
    ${s.fetched?`<div class="kv"><div class="k">We fetched it</div><div class="v">${esc(s.fetched)}</div></div>`:''}
-   ${s.queries?`<div class="kv"><div class="k">Searches we ran</div>
-      <div class="v mono">${s.queries.map(esc).join('<br>')}</div></div>`:''}`;
+   ${s.queries?`<div class="kv"><div class="k">Searches we ran</div><div class="v mono">${s.queries.map(esc).join('<br>')}</div></div>`:''}
+   ${f&&f.note?`<div class="kv"><div class="k">Note</div><div class="v muted">${esc(f.note)}</div></div>`:''}
+   </div>`}).join('')||'<div class="empty">No recorded source: this step comes from the rule book itself.</div>';
   drawer.classList.add('open');
 }
+function openFacts(ids,title){
+  const fs=(CASE.facts||[]).filter(f=>ids.includes(f.id));
+  openSrc(fs.map(f=>({s:f.source,f})),title);
+}
 
+// ------------------------------------------------------------- examples
+fetch('/api/examples').then(r=>r.json()).then(d=>{
+  $('#examples').innerHTML=d.examples.map((e,i)=>`<button class="chip" data-i="${i}">${esc(e.label)}<small>${esc(e.trade)}</small></button>`).join('');
+  document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{$('#prompt').value=d.examples[c.dataset.i].prompt;go();});
+});
+
+// ------------------------------------------------------------- run, streamed
+let T0=0;
+function traceAdd(html){const t=$('#trace');if(t.querySelector('.empty'))t.innerHTML='';t.insertAdjacentHTML('beforeend',html);}
+function onEvent(ev){
+  const ms=((performance.now()-T0)/1000).toFixed(1)+'s';
+  if(ev.type==='stage'){
+    if(ev.name==='form'){const f=ev.form||{};
+      traceAdd(`<div class="ev"><span class="k stage">read</span><span class="n">${esc(f.company_name||'no company named')} · ${esc(f.industry||'trade ?')} · staff ${f.declared_headcount??'?'} · sites ${f.declared_sites??'?'}</span><span class="m">${ms}</span></div>`);return;}
+    traceAdd(`<div class="ev"><span class="k stage">step</span><span class="n">${esc(ev.text||ev.name)}</span><span class="m">${ms}</span></div>`);
+    $('#status').innerHTML=`<span class="spin"></span>${esc(ev.text||ev.name)}…`;
+  } else if(ev.type==='call'){
+    const k=!ev.ok?'fail':ev.cached?'cached':'live';
+    traceAdd(`<div class="ev"><span class="k ${k}">${k}</span><span class="n">POST ${esc(ev.name)}${ev.note?' · '+esc(ev.note):''}</span><span class="m">${ev.cached?'':ev.ms+'ms · '}${ev.credits?ev.credits+' cr':'0 cr'}</span></div>`);
+  }
+}
 async function go(reuse){
-  $('#status').textContent='running…';
+  const btn=$('#goBtn'); btn.disabled=true;
   if(!reuse) ANSWERS={};
-  const r=await fetch('/api/run',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({prompt:$('#prompt').value, answers:ANSWERS})});
-  CASE=await r.json(); $('#status').textContent=''; render(CASE);
+  $('#trace').innerHTML=''; $('#meter').innerHTML=''; T0=performance.now();
+  $('#status').innerHTML='<span class="spin"></span>starting…';
+  try{
+    const r=await fetch('/api/run/stream',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({prompt:$('#prompt').value,answers:ANSWERS,rules_patch:PATCH})});
+    if(!r.ok){const e=await r.json();throw new Error(e.error||r.statusText);}
+    const rd=r.body.getReader(), dec=new TextDecoder(); let buf='';
+    for(;;){const {done,value}=await rd.read(); if(done)break;
+      buf+=dec.decode(value,{stream:true}); let i;
+      while((i=buf.indexOf('\n'))>=0){const line=buf.slice(0,i);buf=buf.slice(i+1);
+        if(!line.trim())continue; const ev=JSON.parse(line);
+        if(ev.type==='case'){CASE=ev.case;render(CASE);} else onEvent(ev);}}
+    $('#status').textContent='';
+  }catch(e){$('#status').innerHTML=`<span class="no">${esc(e.message)}</span>`;}
+  btn.disabled=false;
 }
 function submitAnswers(){
-  document.querySelectorAll('[data-ans]').forEach(el=>{
-    if(el.value!=='') ANSWERS[el.dataset.ans]=el.value;});
+  document.querySelectorAll('[data-ans]').forEach(el=>{if(el.value!=='')ANSWERS[el.dataset.ans]=el.value;});
   go(true);
 }
-
 const INPUTS={cover_type:`<select data-ans="cover_type"><option value="">choose…</option>
   <option value="fire">Fire / property</option><option value="wc">Workmen's compensation</option></select>`,
  sum_insured_inr:`<input data-ans="sum_insured_inr" placeholder="e.g. 4.5 cr  or  50 lakh  or  50000000">`,
+ annual_wages_inr:`<input data-ans="annual_wages_inr" placeholder="e.g. 2.4 cr">`,
  claims_history:`<input data-ans="claims_history" placeholder="e.g. none in five years">`,
  construction:`<input data-ans="construction" placeholder="e.g. pucca / brick and concrete">`,
  protection:`<input data-ans="protection" placeholder="e.g. hydrant + extinguishers">`,
  company_identity:`<input data-ans="company_name" placeholder="legal name, GST number or website">`};
 
+// ------------------------------------------------------------- render
 function render(c){
+  SRCS=[];
   const d=c.decision;
-  const state = d.outcome==='hold' ? 'We stopped on purpose — see below'
-    : d.gate.blocked ? `Cannot price yet — ${d.gate.missing.length} answer(s) missing`
-    : d.outcome==='quote' ? 'Priced and ready' : 'Priced, but an underwriter should see it';
+  if(c.error){$('#decisionCard').innerHTML=`<h2>Decision</h2><div class="outcome o-hold">error</div><div class="headline">${esc(c.error)}</div>`;return;}
+  const state=d.outcome==='hold'?'We stopped on purpose — see why below'
+    :d.gate.blocked?`Cannot price yet — ${d.gate.missing.length} answer(s) missing`
+    :d.outcome==='quote'?'Priced and ready to quote':'Priced, but an underwriter should look first';
+  const edited=Object.keys(c.rules_edited||{}).length;
   $('#decisionCard').innerHTML=`<h2>Decision</h2>
-   <p class="hint">What we would do, the price, and why — in one place.</p>
-   <div class="outcome ${d.outcome}">${d.outcome}</div>
-   <div class="state">${state}</div>
-   <div class="prem">${d.gate.blocked?rs(c.provisional_premium_inr)+
-      ' <span class="muted" style="font-size:12px">provisional, on assumed figures</span>':rs(d.premium_inr)}</div>
+   <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end;margin-top:6px">
+    <div><div class="outcome o-${d.outcome}">${d.outcome}</div><div class="state">${state}</div></div>
+    <div class="prem">${d.outcome==='hold'?'—':d.gate.blocked?rs(c.provisional_premium_inr)+' <small>provisional, on assumed figures</small>':rs(d.premium_inr)+' <small>incl. GST</small>'}</div>
+   </div>
    <div class="headline">${esc(c.headline)}</div>
+   ${edited?`<div class="banner">Priced with <b>edited rules</b> (${edited} change${edited>1?'s':''}) — version ${esc(c.rules_version)}. Reset them on the Rules tab.</div>`:''}
+   ${d.hold_reason?`<div class="banner">${esc((d.notes||[]).join(' · '))}</div>`:''}
    <details><summary>audit detail</summary>
-     <div class="muted mono" style="margin-top:7px">hash ${d.hash} · rules ${d.rules_version}</div>
-     ${d.steps.map(s=>`<div class="muted mono">× ${s.multiplier} ${s.rule} [${(s.because||[]).join(', ')}]</div>`).join('')}
+     <div class="muted mono" style="margin-top:7px">decision hash ${esc(d.hash)} · rules ${esc(d.rules_version)}</div>
+     ${(d.steps||[]).map(s=>`<div class="muted mono">× ${s.multiplier} ${esc(s.rule)} [${(s.because||[]).map(esc).join(', ')}]</div>`).join('')}
    </details>`;
+  $('#verBadge').textContent='rules '+(c.rules_version||'—');
+  $('#verBadge').classList.toggle('edited',!!edited);
 
+  // questions
   const qs=c.questions||[];
-  $('#askCard').style.display = qs.length ? '' : 'none';
-  $('#qs').innerHTML = qs.map(q=>`<div class="q">
-     <div class="lbl">${esc(q.ask)} ${q.worth_inr?`<span class="w">worth ${rs(q.worth_inr)}</span>`:
-        `<span class="w">unlocks pricing</span>`}</div>
-     ${INPUTS[q.field]||`<input data-ans="${q.field}">`}
-     <div class="muted" style="margin-top:5px">no public record: ${esc(q.record_we_need)}</div></div>`).join('');
+  $('#askCard').style.display=qs.length&&d.outcome!=='hold'?'':'none';
+  $('#qs').innerHTML=qs.map(q=>`<div class="q">
+     <div class="lbl">${esc(q.ask)}${q.worth_inr?`<span class="w">worth ${rs(q.worth_inr)}</span>`:`<span class="w">unlocks pricing</span>`}</div>
+     ${INPUTS[q.field]||`<input data-ans="${esc(q.field)}">`}
+     <div class="muted" style="margin-top:5px">No public record: ${esc(q.record_we_need)}</div></div>`).join('');
 
-  window.FIND=(c.findings||[]).map(f=>f.src||{what:f.source});
-  $('#findings').innerHTML=(c.findings||[]).length
-    ? c.findings.map((f,i)=>`<div class="find"><div class="dot ${f.tone}"></div><div class="t">${esc(f.text)}
-        <div class="s"><a href="#" onclick="showSrc(FIND[${i}]);return false">${esc(f.source)}</a></div>
-      </div></div>`).join('') : '<span class="muted">nothing to report.</span>';
+  renderGap(c); renderWaterfall(c);
 
-  $('#why').innerHTML=(c.price_story||[]).map(t=>{
-     const m=t.match(/^([+−-]\d+%)\s+—\s+(.*)$/);
-     return m?`<div class="why"><b>${m[1]}</b> ${esc(m[2])}</div>`:`<div class="why">${esc(t)}</div>`;}).join('')||'—';
+  // findings
+  $('#findings').innerHTML=(c.findings||[]).length?c.findings.map(f=>`<div class="find"><div class="dot ${f.tone}"></div>
+     <div class="t">${esc(f.text)}<div class="s">${srcLink(f.src||{what:f.source},f.source)}</div></div></div>`).join('')
+   :'<div class="empty">Nothing to report.</div>';
 
-  window.SRC=(c.gap_table||[]).map(r=>r.source);
-  $('#gap').innerHTML=`<table><tr><th>Field</th><th>Applicant said</th><th>Record says</th><th>Status</th><th></th></tr>
-   ${(c.gap_table||[]).map((r,i)=>`<tr><td>${esc(r.field)}</td><td>${esc(r.said??'—')}</td>
-     <td>${esc(r.record??'—')}</td><td><span class="pill ${r.status}">${r.status.replace(/_/g,' ')}</span></td>
-     <td>${r.source?`<a href="#" onclick="showSrc(SRC[${i}]);return false">source</a>`:''}</td></tr>`).join('')}</table>`;
+  // flips
+  $('#flips').innerHTML=(c.would_change_my_mind||[]).length?c.would_change_my_mind.map(w=>`<div class="flip">if <b>${esc(w.if)}</b><br>
+     <span class="muted">→ ${w.flips_outcome?`<b class="ok">becomes ${esc(w.then)}</b>`:'still '+esc(w.then)} · ${rs(w.premium_now_inr)} → ${rs(w.premium_then_inr)}</span></div>`).join('')
+   :'<div class="empty">Nothing on file flips this on its own.</div>';
 
-  $('#flips').innerHTML=(c.would_change_my_mind||[]).length
-    ? c.would_change_my_mind.map(w=>`<div class="flip">if <b>${esc(w.if)}</b><br>
-        <span class="muted">→ ${w.flips_outcome?`<b class="ok">becomes ${w.then}</b>`:'still '+w.then} ·
-        ${rs(w.premium_now_inr)} → ${rs(w.premium_then_inr)}</span></div>`).join('')
-    : '<span class="muted">nothing on file flips this on its own.</span>';
+  $('#unchecked').innerHTML=(c.unchecked||[]).length?(c.unchecked||[]).map(u=>`<div class="muted">· ${esc(u)}</div>`).join(''):'<div class="empty">—</div>';
 
-  $('#unchecked').innerHTML=(c.unchecked||[]).length
-    ? (c.unchecked||[]).map(u=>`<div class="muted">· ${esc(u)}</div>`).join('') : '<span class="muted">—</span>';
-
+  // meter
   const l=c.ledger;
-  $('#meter').innerHTML=`<div class="meter"><span>credits <b>${l.credits}</b></span>
-    <span>live <b>${l.live_calls}</b></span><span>cached <b>${l.cached_calls}</b></span><span>${c.elapsed_s}s</span></div>
-    <div style="margin-top:8px">${l.entries.map(e=>`<div class="muted mono">${e.cached?'cached':'live  '} ${e.name}${e.credits?' · '+e.credits:''}</div>`).join('')}</div>`;
+  $('#meter').innerHTML=`<div class="meter"><div><b>${l.live_calls}</b><span>live</span></div><div><b>${l.cached_calls}</b><span>cached</span></div>
+    <div><b>${l.credits}</b><span>credits</span></div><div><b>${c.elapsed_s}s</b><span>time</span></div></div>`;
+  if(!$('#trace').children.length) l.entries.forEach(e=>onEvent({type:'call',...e}));
 
-  const id=c.identity;
+  // identity
+  const id=c.identity, idf=(c.facts||[]).find(f=>f.field==='company_identity');
   $('#ident').innerHTML=id.company
-    ? `<b>${esc(id.company.name||id.company.company_id)}</b>
-       <div class="muted">rung ${id.rung}${id.assumed?' · assumed — confirm before binding':' · matched'}</div>`
-    : `<span class="no">not identified</span>
-       <div class="muted">rung ${id.rung} — checking the trade instead of the company</div>
-       ${(id.candidates||[]).slice(0,5).map(x=>`<div class="muted">· ${esc(x.name||x['basic_info.name']||'?')}</div>`).join('')}`;
+   ?`<div style="font-size:15px;font-weight:600">${esc(id.company.name||id.company.company_id)}</div>
+     <div class="muted">Crustdata id ${esc(id.company.company_id)} · ${id.assumed?'assumed — confirm before binding':'matched on the name given'}</div>
+     ${idf&&idf.note?`<div class="muted" style="margin-top:6px">${esc(idf.note)}</div>`:''}
+     ${idf?`<div style="margin-top:6px">${srcLink(idf.source)}</div>`:''}`
+   :`<div class="no" style="font-weight:600">${id.rung===0?'Not sure which company':'Not identified'}</div>
+     <div class="muted">${id.rung===0?'Several records match and none is clearly the one named. We hold rather than guess.':'No company named, so we check the trade instead of the company.'}</div>
+     ${(id.candidates||[]).slice(0,5).map(x=>`<div class="muted">· ${esc(x.name||(x.basic_info||{}).name||'?')}</div>`).join('')}`;
 }
 
+function renderGap(c){
+  const rows=c.gap_table||[];
+  if(!rows.length){$('#gap').innerHTML='<div class="empty">No checks ran.</div>';return;}
+  // a CHECK compares something they said, or flags something they did not say.
+  // Everything else is background from the record: useful, but not a check.
+  const BACKGROUND=new Set(['company_name','year_founded','employee_count_range','stated_activities',
+    'role_mix','headcount_growth_pct','staff_abroad','hiring_abroad','hiring_location','stale_job_listings']);
+  const isCheck=r=>!BACKGROUND.has(r.field)&&(r.said!=null||['contradicts','undeclared'].includes(r.status)
+    ||['company_identity','adverse_event','class_benchmark','class_percentile','certification','evidence_unavailable'].includes(r.field));
+  const table=rs_=>`<div style="overflow-x:auto"><table><tr><th>Check</th><th>They said</th><th>Public record</th><th>Verdict</th><th>Source</th></tr>
+   ${rs_.map(r=>`<tr><td>${esc(nm(r.field))}</td><td>${esc(fmtVal(r.field,r.said))}</td>
+     <td>${esc(fmtVal(r.field,r.record))}${r.note?`<div class="muted">${esc(r.note)}</div>`:''}</td>
+     <td><span class="pill ${r.status}">${STATUS[r.status]||esc(r.status)}</span></td>
+     <td>${r.source?srcLink(r.source):''}</td></tr>`).join('')}</table></div>`;
+  const checks=rows.filter(isCheck), bg=rows.filter(r=>!isCheck(r));
+  $('#gap').innerHTML=(checks.length?table(checks):'<div class="empty">Nothing to compare.</div>')+
+   (bg.length?`<details><summary>Background from the record (${bg.length}) — who they are, where staff and hiring sit</summary>
+     <div style="margin-top:8px">${table(bg)}</div></details>`:'');
+}
+
+function renderWaterfall(c){
+  const d=c.decision, real=(c.price_build||[]).length;
+  const pb=real?c.price_build:(c.provisional_price_build||[]);
+  if(!pb.length||pb[0].kind==='error'){
+    $('#why').innerHTML=`<div class="empty">${pb.length?'The price build did not reconcile with the decision, so it is not drawn.':d.outcome==='hold'?'No price: the case is on hold.':'No price yet.'}</div>`;return;}
+  $('#whyHint').textContent=real?'Base rate for the trade, then each named loading or discount, then GST. Click a step to see the facts that caused it.'
+    :'PROVISIONAL — built on assumed figures until the questions above are answered. Click a step to see the facts that caused it.';
+  // running totals: each step spans [before, after]
+  let prev=0; const rows=pb.map(s=>{const before=s.kind==='base'?0:prev; prev=s.after; return {...s,before};});
+  const max=Math.max(...rows.map(r=>Math.max(r.before,r.after)))*1.04||1;
+  const pct=v=>(v/max*100).toFixed(2)+'%';
+  window.WF=rows;
+  const row=(r,i,final)=>{const lo=Math.min(r.before,r.after), hi=Math.max(r.before,r.after);
+    const cls=final?'final':r.kind;
+    const val=final?rs(r.after):r.kind==='base'?rs(r.after):(r.delta>=0?'+':'−')+rs(Math.abs(r.delta)).slice(0);
+    const sub=final?'premium':r.kind==='base'?`rate ${r.multiplier}`:r.multiplier?`× ${(+r.multiplier).toFixed(2)}`:'';
+    return `<div class="wf-row ${final?'final':''}" data-i="${final?-1:i}">
+      <div class="l">${esc(final?'Premium':r.kind==='base'?'Base rate':r.label)}<small>${esc(final?'what we would charge':r.kind==='base'?(r.rule||'').split('_BASE_').pop().toLowerCase().replace(/_/g,' '):r.kind==='load'?'raises the price':r.kind==='discount'?'lowers the price':'tax')}</small></div>
+      <div class="wf-track"><div class="wf-bar ${cls}" style="left:${pct(final?0:lo)};width:max(2px,${pct((final?r.after:hi-lo))})"></div></div>
+      <div class="v">${val}<small>${esc(sub)}</small></div></div>`;};
+  $('#why').innerHTML=`<div class="legend"><span><i style="background:var(--total)"></i>base and tax</span>
+     <span><i style="background:var(--up)"></i>raises the price</span><span><i style="background:var(--down)"></i>lowers the price</span></div>
+   <div class="wf">${rows.map((r,i)=>row(r,i,false)).join('')}${row(rows[rows.length-1],0,true)}</div>`;
+  document.querySelectorAll('.wf-row').forEach(el=>{
+    const i=+el.dataset.i, r=i<0?null:rows[i];
+    el.onmousemove=e=>{tip.style.display='block';tip.style.left=Math.min(e.clientX+14,innerWidth-320)+'px';tip.style.top=(e.clientY+14)+'px';
+      tip.innerHTML=r?`<b>${esc(r.kind==='base'?'Base rate':r.label)}</b>${esc(r.explain||'')}<div class="muted" style="margin-top:4px">${rs(r.before)} → ${rs(r.after)}${(r.because||[]).length?' · click for the facts':''}</div>`
+        :`<b>Premium</b>${rs(rows[rows.length-1].after)} including GST`;};
+    el.onmouseleave=()=>tip.style.display='none';
+    el.onclick=()=>{ if(r&&(r.because||[]).length) openFacts(r.because, `${r.kind==='base'?'Base rate':r.label}: ${r.explain||''}`);
+      else if(r) openSrc([], `${r.label}: ${r.explain||''}`); };
+  });
+}
+
+// ------------------------------------------------------------- rules tab
+const RULE_GROUPS=[
+ ['Fire rate per mille, by occupancy','occupancy_rate_per_mille',null],
+ ["Workmen's comp rate per ₹100 of wages",'wc_rate_per_100_wages',null],
+ ['Loadings (× multiplier)','loadings','multiplier'],
+ ['Discounts (× multiplier)','discounts','multiplier'],
+];
+function loadRules(){fetch('/api/rules').then(r=>r.json()).then(r=>{RULES=r;drawRules();});}
+function inp(path,val){const cur=PATCH[path]??val;
+  return `<input type="number" step="any" min="0" data-path="${esc(path)}" data-orig="${val}" value="${cur}" class="${PATCH[path]!=null?'changed':''}">`;}
+function drawRules(){
+  const R=RULES; let html='';
+  for(const [title,key,leaf] of RULE_GROUPS){
+    const tbl=R[key]||{};
+    html+=`<div class="card"><h2>${esc(title)}</h2><table class="rtable">${Object.entries(tbl).map(([k,v])=>{
+      const val=leaf?v[leaf]:v, path=leaf?`${key}.${k}.${leaf}`:`${key}.${k}`;
+      return `<tr><td>${esc(k.replace(/_/g,' '))}${leaf&&v.explain?`<div class="x">${esc(v.explain)}</div>`:''}</td><td style="text-align:right">${inp(path,val)}</td></tr>`;}).join('')}</table></div>`;
+  }
+  html+=`<div class="card"><h2>Tolerances and totals</h2><table class="rtable">
+    <tr><td>Headcount: record may exceed declared by (%)<div class="x">above this, the declaration counts as understated. Below declared is never a mismatch.</div></td><td style="text-align:right">${inp('tolerances.headcount_over_declared_pct',R.tolerances.headcount_over_declared_pct)}</td></tr>
+    <tr><td>GST rate<div class="x">0.18 = 18%</div></td><td style="text-align:right">${inp('gst_rate',R.gst_rate)}</td></tr>
+    <tr><td>Minimum premium (₹)</td><td style="text-align:right">${inp('minimum_premium_inr',R.minimum_premium_inr)}</td></tr></table></div>`;
+  $('#rulesGrid').innerHTML=html;
+  document.querySelectorAll('#rulesGrid input').forEach(el=>el.oninput=()=>{
+    const p=el.dataset.path, o=+el.dataset.orig, v=el.value;
+    if(v===''||+v===o) delete PATCH[p]; else PATCH[p]=+v;
+    el.classList.toggle('changed',PATCH[p]!=null); rulesState();});
+  rulesState();
+}
+function rulesState(){const n=Object.keys(PATCH).length;
+  $('#rulesStatus').textContent=n?`${n} change${n>1?'s':''} not yet applied to a case`:'using the rule book as written';
+  $('#rulesBanner').innerHTML=n?`<div class="banner mono">${Object.entries(PATCH).map(([k,v])=>esc(k)+' = '+v).join('<br>')}</div>`:'';}
+function applyRules(){
+  document.querySelector('nav button[data-tab=desk]').click(); go(true);}
+function resetRules(){PATCH={};drawRules();if(CASE)go(true);}
+loadRules();
+
+// a shareable link runs the case: /?q=<submission>&a=<answers as JSON>
+(()=>{const u=new URLSearchParams(location.search), q=u.get('q');
+  if(!q) return; $('#prompt').value=q;
+  try{ANSWERS=JSON.parse(u.get('a')||'{}');}catch(e){ANSWERS={};}
+  go(true);})();
+
+// ------------------------------------------------------------- invariance / tests
 async function invariance(){
-  $('#invout').textContent='running eight…';
+  $('#invout').innerHTML='<span class="spin"></span>running eight…';
   const d=await(await fetch('/api/invariance')).json();
   $('#invout').innerHTML=`<div style="font-size:15px;margin-bottom:9px" class="${d.all_match?'ok':'no'}">
-     ${d.all_match?'All eight wordings produced one decision.':
-       d.distinct+' different decisions — the wording is reaching the decision. Fix the Read step or the normalizer.'}</div>
-   <table><tr><th>Wording</th><th>Staff read</th><th>Sites read</th><th>Outcome</th><th>Hash</th></tr>
-   ${d.rows.map(r=>`<tr><td>${r.label}</td><td>${r.form.declared_headcount??'—'}</td>
-     <td>${r.form.declared_sites??'—'}</td><td>${r.outcome}</td>
-     <td class="mono ${d.all_match?'ok':''}">${r.hash.slice(0,16)}</td></tr>`).join('')}</table>
-   <p class="hint" style="margin-top:10px">Outcome is the same on every row because none of these
-    wordings gives a sum insured, so the gate blocks pricing in all eight. The hash is the real test.</p>`;
+     ${d.all_match?'All eight wordings produced one decision.':d.distinct+' different decisions — the wording is reaching the decision. Fix the Read step or the normalizer.'}</div>
+   <div style="overflow-x:auto"><table><tr><th>Wording</th><th>Staff read</th><th>Sites read</th><th>Outcome</th><th>Hash</th></tr>
+   ${d.rows.map(r=>`<tr><td>${esc(r.label)}</td><td>${r.form.declared_headcount??'—'}</td>
+     <td>${r.form.declared_sites??'—'}</td><td>${esc(r.outcome)}</td>
+     <td class="mono ${d.all_match?'ok':''}">${esc(r.hash.slice(0,16))}</td></tr>`).join('')}</table></div>
+   <p class="hint" style="margin-top:10px">The outcome is the same on every row because none of these wordings gives a sum insured, so the gate blocks pricing in all eight. The hash is the real test.</p>`;
 }
 async function tests(){
-  $('#testout').textContent='running…';
+  $('#testout').innerHTML='<span class="spin"></span>running…';
   const d=await(await fetch('/api/tests')).json();
   $('#testout').innerHTML=`<div style="font-size:15px;margin-bottom:9px" class="${d.passed===d.total?'ok':'no'}">${d.passed} of ${d.total} passed</div>
-   <table><tr><th></th><th>Case</th><th>Checks</th><th>Outcome</th><th>Why not</th></tr>
+   <div style="overflow-x:auto"><table><tr><th></th><th>Case</th><th>Checks</th><th>Outcome</th><th>Why not</th></tr>
    ${d.cases.map(c=>`<tr><td class="${c.pass?'ok':'no'}">${c.pass?'PASS':'FAIL'}</td>
      <td>${c.id}. ${esc(c.name)}</td><td class="muted">${esc(c.checks||'')}</td>
-     <td>${c.outcome}</td><td class="muted">${esc(c.why||'')}</td></tr>`).join('')}</table>`;
+     <td>${esc(c.outcome)}</td><td class="muted">${esc(c.why||'')}</td></tr>`).join('')}</table></div>`;
 }
 </script></body></html>

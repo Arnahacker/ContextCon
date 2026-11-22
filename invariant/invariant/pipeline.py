@@ -1,7 +1,7 @@
 """Read -> Check -> Decide. The only place the steps are wired together."""
 from __future__ import annotations
-import os, pathlib, uuid, yaml
-from typing import Any, Optional
+import copy, hashlib, json, os, pathlib, uuid, yaml
+from typing import Any, Callable, Optional
 
 from .schemas import Form
 from .facts import Fact, Source, CANNOT_VERIFY
@@ -26,14 +26,71 @@ def load_rules() -> dict[str, Any]:
     return yaml.safe_load(RULES_PATH.read_text(encoding="utf-8"))
 
 
+class BadRulesPatch(ValueError):
+    pass
+
+
+def apply_rules_patch(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
+    """Edited rules from the screen: {"loadings.UNDECLARED_HAZARD.multiplier": 1.6}.
+
+    Only EXISTING NUMERIC values can change - no new keys, no text, no
+    structure - so a patch can move a price but cannot add a rule.
+    The version gets a suffix derived from the patch itself, so the decision
+    hash moves with the rules. Same patch, same version, same hash.
+    """
+    if not patch:
+        return base
+    out = copy.deepcopy(base)
+    clean: dict[str, float] = {}
+    for path, val in patch.items():
+        keys = str(path).split(".")
+        node = out
+        for k in keys[:-1]:
+            if not isinstance(node, dict) or k not in node:
+                raise BadRulesPatch(f"no such rule: {path}")
+            node = node[k]
+        leaf = keys[-1]
+        if not isinstance(node, dict) or leaf not in node:
+            raise BadRulesPatch(f"no such rule: {path}")
+        if isinstance(node[leaf], bool) or not isinstance(node[leaf], (int, float)):
+            raise BadRulesPatch(f"not a number: {path}")
+        try:
+            v = float(val)
+        except (TypeError, ValueError):
+            raise BadRulesPatch(f"{path} must be a number, got {val!r}")
+        if not (0 <= v <= 1e9):
+            raise BadRulesPatch(f"{path} out of range: {v}")
+        if v != node[leaf]:
+            node[leaf] = v
+            clean[path] = v
+    if clean:
+        tag = hashlib.sha256(json.dumps(clean, sort_keys=True).encode()).hexdigest()[:6]
+        out["version"] = f"{base['version']}+edit.{tag}"
+        out["_edited"] = clean
+    return out
+
+
 def run(prompt: str, run_id: Optional[str] = None,
         answers: Optional[dict[str, Any]] = None,
-        rules: Optional[dict] = None) -> dict[str, Any]:
-    """One prompt in, one full case out. Safe to call again with the same run_id."""
+        rules: Optional[dict] = None,
+        on_event: Optional[Callable[[dict], None]] = None) -> dict[str, Any]:
+    """One prompt in, one full case out. Safe to call again with the same run_id.
+
+    on_event, if given, is told about each stage and each API call as it
+    happens. It only observes; nothing it does reaches the decision.
+    """
     rules = rules or load_rules()
     run_id = run_id or uuid.uuid4().hex[:10]
     log = RunLog(run_id)
-    ledger = Ledger()
+
+    def emit(**ev):
+        if on_event:
+            try:
+                on_event(ev)
+            except Exception:
+                pass
+
+    ledger = Ledger(listener=lambda e: emit(type="call", **e.to_dict()))
     budget = Budget(max_seconds=float(os.environ.get("MAX_SECONDS", 90)),
                     max_credits=float(os.environ.get("MAX_CREDITS", 400))).start()
     crust = Crustdata(ledger)
@@ -41,7 +98,9 @@ def run(prompt: str, run_id: Optional[str] = None,
     log.append("prompt", text=prompt)
 
     # 1. READ ------------------------------------------------------------
+    emit(type="stage", name="read", text="Reading the submission into a fixed form")
     form = extract(prompt)
+    emit(type="stage", name="form", form=form.to_dict())
     log.append("form", **form.to_dict())
 
     # answers from the conversation are declared facts with their own source.
@@ -70,6 +129,7 @@ def run(prompt: str, run_id: Optional[str] = None,
     # 2. CHECK -----------------------------------------------------------
     ident = Identity(rung=2)
     try:
+        emit(type="stage", name="identify", text="Working out which company this is")
         ident = resolve(form, crust)
         facts.append(ident.fact())
         budget.check(ledger.credits)
@@ -138,10 +198,14 @@ def run(prompt: str, run_id: Optional[str] = None,
                 form.declared_sites, [{"city": c} for c in prem],
                 "POST /company/enrich -> locations.all_office_addresses", url=url)
 
-            # --- staff in another country: unambiguous, unlike city rollups
+            # --- staff in another country. CONTEXT, not an undeclared site:
+            # people on a payroll abroad are usually sales agents or buying
+            # offices, not premises, and fire cover is about premises. Loading
+            # it as a site would invent a finding. Shown, never priced.
             for region, n in adapt.offshore_regions(cd).items():
-                facts.append(Fact(f"offshore_{region[:10]}", "undeclared_site", region,
-                                  "crustdata", "undeclared", "lower_bound", "company_id",
+                facts.append(Fact(f"offshore_{region[:10]}", "staff_abroad", region,
+                                  "crustdata", "consistent_unconfirmed", "lower_bound",
+                                  "company_id",
                                   Source(what="POST /company/enrich -> headcount.by_region_absolute",
                                          url=url, dated=dated,
                                          quote=f"{n} staff recorded in {region}")))
@@ -164,20 +228,41 @@ def run(prompt: str, run_id: Optional[str] = None,
             budget.check(ledger.credits)
 
             # --- hazardous work shows up in hiring first
+            emit(type="stage", name="jobs", text="Checking job listings for hazardous work")
             try:
                 jobs = adapt.jobs(crust.jobs_for_company(cid), company_id=cid)
             except EvidenceUnavailable:
                 jobs = []
-            facts += build.hazard_facts(jobs, form.activities)
-            facts += build.job_location_facts(jobs, prem)
+            # listings older than a year are not evidence about the site today
+            import datetime as _dt
+            jobs, stale_jobs = adapt.recent_jobs(jobs, _dt.date.today().isoformat())
+            if stale_jobs:
+                newest = max((j.get("posted") or "" for j in stale_jobs), default="")
+                facts.append(Fact("jobs_stale", "stale_job_listings", len(stale_jobs),
+                                  "crustdata", "consistent_unconfirmed", "lower_bound",
+                                  "company_id",
+                                  Source(what="POST /job/search -> metadata.date_added",
+                                         dated=newest or None,
+                                         quote=f"{len(stale_jobs)} listings older than a year"),
+                                  note="older than 12 months: not used as evidence "
+                                       "about the premises today"))
+            # what the broker DID declare: a chemical maker has not hidden
+            # "chemical handling" by saying it makes chemicals
+            declared_work = list(form.activities or []) + [form.industry or ""]
+            facts += build.hazard_facts(jobs, declared_work)
+            home = ((cd.get("locations") or {}).get("country")
+                    or (cd.get("headcount") or {}).get("largest_headcount_country")
+                    or "India")
+            facts += build.job_location_facts(jobs, prem, form.declared_sites, home)
 
             # --- hazard the company itself describes
             facts += build.hazard_facts(
                 [{"title": adapt.activity_text(cd)[:400],
-                  "url": (adapt.basic(cd) or {}).get("website")}], form.activities,
+                  "url": (adapt.basic(cd) or {}).get("website")}], declared_work,
                 src_what="POST /company/enrich -> basic_info.description + taxonomy")
             budget.check(ledger.credits)
 
+            emit(type="stage", name="web", text="Searching the web for fires, accidents, notices")
             nm = adapt.name(cd) or ""
             city = adapt.hq(cd) or ""
             queries = [f'"{nm}" fire', f'"{nm}" accident', f'"{nm}" pollution notice']
@@ -203,6 +288,7 @@ def run(prompt: str, run_id: Optional[str] = None,
         log.append("budget_exceeded", what=e.what, spent=e.spent, cap=e.cap)
 
     # 3. DECIDE ----------------------------------------------------------
+    emit(type="stage", name="decide", text="Deciding: a pure function of the facts")
     d = decide(facts, rules)
     provisional = decide(assume_for_pricing(facts), rules)
     questions = price_questions(facts, rules)
@@ -223,12 +309,69 @@ def run(prompt: str, run_id: Optional[str] = None,
         "would_change_my_mind": flips,
         "ledger": ledger.to_dict(),
         "elapsed_s": budget.elapsed,
+        "rules_version": rules["version"],
+        "rules_edited": rules.get("_edited") or {},
+        "price_build": price_build(d.to_dict(), rules),
+        # when the gate is blocked the real build is empty; this one runs on the
+        # labelled assumptions and is shown as PROVISIONAL, never as the price
+        "provisional_price_build": price_build(provisional.to_dict(), rules),
+        "assumed": [f.to_dict() for f in assume_for_pricing(facts) if f.origin == "derived"
+                    and f.note == "assumed"],
     }
     out["gap_table"] = gap_table(out)
     out["headline"] = summary.headline(out)
     out["findings"] = summary.findings(out)
     out["unchecked"] = summary.unchecked(out)
     out["price_story"] = summary.price_story(out)
+    return out
+
+
+def price_build(d: dict, rules: dict) -> list[dict]:
+    """The premium as a running total, step by step, for the waterfall.
+
+    Recomputes nothing new: it replays decide()'s own steps in decide()'s order
+    (base, each multiplier, the minimum, GST) and checks it lands on the same
+    number. If it ever does not, it says so instead of drawing a wrong chart.
+    """
+    steps = d.get("steps") or []
+    base_step = next((s for s in steps if "_BASE_" in s["rule"]), None)
+    if not base_step or not d.get("premium_inr"):
+        return []
+    # the base amount is in the explain text's numbers; rebuild it from rate x basis
+    import re as _re
+    m = _re.search(r"([\d,]+(?:\.\d+)?) / (\d+) x ([\d.]+)", base_step.get("explain", ""))
+    if not m:
+        return []
+    basis, per, rate = float(m.group(1).replace(",", "")), float(m.group(2)), float(m.group(3))
+    total = basis / per * rate
+    out = [{"label": "Base rate", "rule": base_step["rule"], "kind": "base",
+            "multiplier": rate, "after": round(total), "because": base_step["because"],
+            "explain": base_step.get("explain", "")}]
+    for s in steps:
+        if s is base_step or "_BASE_" in s["rule"]:
+            continue
+        before = total
+        total *= s["multiplier"]
+        out.append({"label": s["rule"].replace("_", " ").title(), "rule": s["rule"],
+                    "kind": "load" if s["multiplier"] > 1 else "discount",
+                    "multiplier": s["multiplier"], "delta": round(total - before),
+                    "after": round(total), "because": s["because"],
+                    "explain": s.get("explain", "")})
+    floor = rules["minimum_premium_inr"]
+    if total < floor:
+        out.append({"label": "Minimum premium", "rule": "MINIMUM", "kind": "load",
+                    "multiplier": None, "delta": round(floor - total), "after": floor,
+                    "because": [], "explain": f"no policy below Rs {floor:,}"})
+        total = floor
+    before = total
+    total *= 1 + rules["gst_rate"]
+    out.append({"label": "GST", "rule": "GST", "kind": "tax",
+                "multiplier": 1 + rules["gst_rate"], "delta": round(total - before),
+                "after": round(total), "because": [],
+                "explain": f"{rules['gst_rate'] * 100:.0f}% GST"})
+    if round(total) != d["premium_inr"]:
+        return [{"label": "price build does not reconcile with decide()", "kind": "error",
+                 "after": d["premium_inr"], "because": [], "explain": ""}]
     return out
 
 

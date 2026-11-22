@@ -57,7 +57,7 @@ Input is ALWAYS a short prompt. No PDF, no email, no file upload.
 pip install -r requirements.txt
 cp .env.example .env        # Windows: copy .env.example .env
 ./run.sh                    # Windows: run.bat      -> localhost:8000
-pytest -q                   # 25 tests, no network
+pytest -q                   # 42 tests, no network
 ```
 
 With no keys it runs end to end on `mocks/*.json` with a regex reader.
@@ -117,10 +117,33 @@ Base `https://api.crustdata.com`, headers `authorization: Bearer <key>` and
 - `/web/search/live` returns `{success, query, timestamp, results, metadata}`;
   each web result is `{position, title, snippet, url, source}` - no date, and
   the url is often a google.com/goto redirect. No `limit` param.
-- Cost comes back in the `x-credits-used` header.
+- Cost comes back in the `x-credits-used` header. `/company/search` is the
+  expensive one (~7.6 credits for a 25-row class check).
+- `/company/identify` returns DUPLICATE profiles of one company with equal
+  scores, and plant-level profiles ("...Limited, Roha And Mahad") that can
+  outscore the company. `identity.break_tie` / `exact_name_match` resolve only
+  same-company duplicates or an exact match for the name given; anything else
+  still holds. The committed `company_identify.json` mock is trimmed: live
+  Rajda returns four Rajdas tied at 0.80.
+- Mock and live use SEPARATE cache namespaces. They used to share one, and the
+  fake company_search mock was served as live evidence. Real responses for the
+  on-screen examples are in `mocks/by_request/` (keyed by request hash), so
+  mock mode shows the right company for each example.
 
 Verified live: `/company/identify`, `/company/enrich`, `/job/search`,
 `/web/search/live` (22 Nov). Real responses are in `mocks/`.
+
+## Findings we deliberately do NOT make (each was wrong on live data)
+
+- Staff abroad (`staff_abroad`) and hiring abroad (`hiring_abroad`) are
+  context, never an undeclared site: a sales office is not premises.
+- A job city is an undeclared site only if it is in the home country, is a
+  different city (compared by city name, aliases folded: Bangalore=Bengaluru),
+  and takes the count past the sites declared. Otherwise `hiring_location`.
+- Job listings older than 12 months are not evidence (`stale_job_listings`).
+- A web result is an adverse event only if it names the company, the city AND
+  an incident word. Directory and vendor pages name companies all the time.
+- A declared industry is not an "undeclared hazard" of the same thing.
 
 ## Who owns what
 
