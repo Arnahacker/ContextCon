@@ -55,3 +55,13 @@ def test_marine_and_liability_breakdowns_reconcile():
                    followup("marine_route", "international")])
     _check(base + [followup("cover_type", "liability"), followup("liability_limit", 10_000_000),
                    followup("turnover", 300_000_000)])
+
+
+def test_every_line_says_why_and_the_base_shows_its_benchmark():
+    _, b = _check(hero_facts() + HERO_ANSWERS)
+    assert all(l["why"] for l in b["lines"]), [l["label"] for l in b["lines"] if not l["why"]]
+    fire = next(l for l in b["lines"] if l["kind"] == "base" and l.get("benchmarks"))
+    assert sum(r["chosen"] for r in fire["benchmarks"]) == 1
+    assert next(r for r in fire["benchmarks"] if r["chosen"])["rate"] == fire["rate"]
+    assert fire["source"]["label"] == "the broker's answer"
+    assert b["standards"] and "illustrative" in b["rate_card"]
