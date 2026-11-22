@@ -193,8 +193,20 @@ def _value_reading(field: str, value: str) -> FieldReading:
     return FieldReading(field=field, kind="value", value=v, display=f"I read that as: {v}")
 
 
+_WEBSITE = re.compile(r"(?:https?://)?(?:www\.)?((?:[a-z0-9-]+\.)+[a-z]{2,})(?:[/?#]\S*)?", re.I)
+_FREE_TEXT_WORDS = 8  # a short plain reply to an identity question is the value itself
+_IDENTITY_FIELDS = {"company", "city", "state"}  # never claims or other judgement answers
+
+
+def _website(reply: str) -> Optional[str]:
+    """'https://www.amazon.in/' or 'it's amazon.in' -> 'amazon.in'."""
+    m = _WEBSITE.search(reply)
+    return m.group(1).lower() if m else None
+
+
 def _rules_answer(field: str, reply: str) -> FieldReading:
-    """No LLM: take one clear number for numeric fields (even inside prose), else unknown."""
+    """No LLM: take one clear number for numeric fields (even inside prose), a short plain
+    reply for text fields, else unknown."""
     # Hindi number words collide with ordinary words ("why do you ask"), so in prose we only
     # trust digits or a lakh/crore-style scale word.
     clear = _is_pure_number(reply) or bool(re.search(r"\d", reply)) or \
@@ -203,6 +215,8 @@ def _rules_answer(field: str, reply: str) -> FieldReading:
         got = _number_reading(field, reply)
         if got:
             return got
+    if field in _IDENTITY_FIELDS and "?" not in reply and len(reply.split()) <= _FREE_TEXT_WORDS:
+        return _value_reading(field, reply.strip().strip(".!"))
     return FieldReading(field=field, kind="unknown",
                         display=f"I could not read the {_label(field)} from that reply automatically; "
                                 "treating it as not known. Please rephrase as a plain value to change it.")
@@ -233,6 +247,9 @@ def read_answer(field: str, question: str, reply: str, options: Optional[list[st
         got = _number_reading(field, reply)
         if got:
             return got
+    if field == "company" and _website(reply):  # a website needs no reading: look it up directly
+        site = _website(reply)
+        return FieldReading(field=field, kind="value", value=site, display=f"I read that as the website {site}")
     try:
         raw = call_tool(kind="answer", index_key=f"{field}: {reply}", prompt_version=PROMPT_VERSION,
                         system=SYSTEM, tool=TOOL,

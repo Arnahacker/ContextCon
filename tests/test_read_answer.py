@@ -102,3 +102,28 @@ def test_band_option_becomes_a_range_not_text():
     assert f.value == {"low": 250_000_000, "high": int(r.high)}
     # a typed "15 cr" must not be mistaken for the "1-5 Cr" band
     assert read_answer("sum_insured", q, "15 cr", bands).value != 30_000_000
+
+
+def test_company_website_is_read_without_any_llm(monkeypatch):
+    from invariant.read import answer as ans
+
+    def boom(**_):
+        raise AssertionError("no LLM call for a website")
+    monkeypatch.setattr(ans, "call_tool", boom)
+    for reply in ("https://www.amazon.in/", "Amazon.in", "its website is bata.com"):
+        r = ans.read_answer("company", "What is its website or city?", reply)
+        assert r.kind == "value", reply
+    assert ans.read_answer("company", "q", "https://www.amazon.in/").value == "amazon.in"
+    assert ans.read_answer("company", "q", "its website is bata.com").value == "bata.com"
+
+
+def test_rules_fallback_takes_a_short_plain_text_answer(monkeypatch):
+    from invariant.read import answer as ans
+    from invariant.read.llm import LLMUnavailable
+
+    def down(**_):
+        raise LLMUnavailable("quota")
+    monkeypatch.setattr(ans, "call_tool", down)
+    r = ans.read_answer("company", "What is its website or city?", "Bata India Kolkata")
+    assert r.kind == "value" and r.value == "Bata India Kolkata"
+    assert ans.read_answer("company", "q", "why do you need that?").kind == "unknown"

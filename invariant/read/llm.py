@@ -29,7 +29,7 @@ import httpx
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "fixtures" / "llm"
-CACHE_DB = ROOT / "data" / "llm_cache.sqlite"
+CACHE_DB = Path(os.environ.get("INVARIANT_DATA", ROOT / "data")) / "llm_cache.sqlite"
 
 MODEL = os.environ.get("INVARIANT_LLM_MODEL", "claude-opus-5-5")  # Claude model
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
@@ -155,8 +155,12 @@ def _live_claude(*, system: str, tool: dict, user_text: str) -> dict[str, Any]:
 
 # ------------------------------------------------------------------ gemini
 
+import time as _time  # noqa: E402
+
 _gemini_models: list[str] | None = None
 _GEMINI_SKIP = (404, 429, 500, 503)  # retired, rate-limited or overloaded: try the next model
+GEMINI_REST_S = 60  # after every model says 429, skip Gemini this long (rules answer instantly)
+_gemini_rest_until = 0.0
 
 
 def _gemini_post(model: str, body: dict) -> httpx.Response:
@@ -180,7 +184,9 @@ def _gemini_candidates() -> list[str]:
 
 
 def _live_gemini(*, system: str, tool: dict, user_text: str) -> tuple[dict[str, Any], str]:
-    global _gemini_models
+    global _gemini_models, _gemini_rest_until
+    if _time.monotonic() < _gemini_rest_until:
+        raise RuntimeError("Gemini quota used up (every model answered 429); resting before trying again")
     if _gemini_models is None:
         _gemini_models = _gemini_candidates()
     schema = tool["input_schema"]
@@ -218,6 +224,8 @@ def _live_gemini(*, system: str, tool: dict, user_text: str) -> tuple[dict[str, 
             _gemini_models.remove(model)
             _gemini_models.insert(0, model)
         return {k: v for k, v in out.items() if k in allowed}, model
+    if errors and all(e.endswith(": 429") for e in errors):  # quota used up: stop retrying for a while
+        _gemini_rest_until = _time.monotonic() + GEMINI_REST_S
     raise RuntimeError(f"no Gemini model answered: {', '.join(errors)}")
 
 
