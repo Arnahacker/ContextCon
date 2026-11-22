@@ -92,4 +92,4 @@ def test_offline_missing_fixture_falls_back_to_rules():
     assert reader == "rules" and extract_mod.last_reader == "rules"
     assert form.company_name is None
     _, reader = extract_with_reader(CASES[1]["prompt"])
-    assert reader == "claude" and extract_mod.last_reader == "claude"
+    assert reader == "fixture" and extract_mod.last_reader == "fixture"

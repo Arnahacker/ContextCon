@@ -55,7 +55,7 @@ TOOL = {
 }
 
 
-Reader = Literal["claude", "rules"]
+Reader = str  # "claude" | "gemini" | "fixture" | "rules"
 # which reader produced the most recent Form ("read by Claude" / "read by rules").
 # Read it as `invariant.read.extract.last_reader` (not via `from ... import`), or use extract_with_reader.
 last_reader: Reader | None = None
@@ -66,8 +66,8 @@ def extract_raw(text: str) -> tuple[dict, Reader]:
     try:
         raw = call_tool(kind="extract", index_key=text, prompt_version=PROMPT_VERSION,
                         system=SYSTEM, tool=TOOL, user_text=text)
-        log.info("read: extract by claude (%s)", llm.last_source)
-        return raw, "claude"
+        log.info("read: extract by %s (%s)", llm.last_provider, llm.last_source)
+        return raw, llm.last_provider or "llm"
     except LLMUnavailable as exc:
         log.warning("read: extract by rules (%s)", exc)
         return rules_extract(text), "rules"

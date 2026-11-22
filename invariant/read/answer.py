@@ -196,7 +196,8 @@ def read_answer(field: str, question: str, reply: str, options: Optional[list[st
         log.warning("read: answer %s by rules (%s)", field, exc)
         last_reader = "rules"
         return _rules_answer(field, reply)
-    last_reader = "claude"
+    from invariant.read import llm as _llm
+    last_reader = _llm.last_provider or "llm"
     if raw.get("kind") == "unknown":
         return _unknown(field)
     if raw.get("kind") != "value" or not raw.get("value"):

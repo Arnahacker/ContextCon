@@ -80,9 +80,30 @@ def test_live_failure_falls_back(monkeypatch):
     def boom(**_):
         raise RuntimeError("simulated outage")
 
-    monkeypatch.setattr(llm, "_live", boom)
+    monkeypatch.setattr(llm, "providers", lambda: ["claude", "gemini"])
+    monkeypatch.setattr(llm, "_live_claude", boom)
+    monkeypatch.setattr(llm, "_live_gemini", boom)
     form, reader = extract_with_reader(SUPER)
     assert reader == "rules" and form.declared_headcount == 120
+
+
+def test_gemini_used_when_claude_fails(monkeypatch):
+    monkeypatch.setattr(llm, "offline", lambda: False)
+    monkeypatch.setattr(llm, "_db", _NoCacheDB)
+    monkeypatch.setattr(llm, "providers", lambda: ["claude", "gemini"])
+    monkeypatch.setattr(llm.FIXTURES.__class__, "write_text", lambda *a, **k: None)
+
+    def boom(**_):
+        raise RuntimeError("simulated claude outage")
+
+    def gemini(**_):
+        return ({"company_name": "Super Tannery Ltd", "city": "Kanpur", "industry": "leather",
+                 "declared_headcount": "120", "declared_sites": "1"}, "gemini-test")
+
+    monkeypatch.setattr(llm, "_live_claude", boom)
+    monkeypatch.setattr(llm, "_live_gemini", gemini)
+    form, reader = extract_with_reader(SUPER)
+    assert reader == "gemini" and form.declared_headcount == 120 and form.city == "Kanpur"
 
 
 def test_answer_falls_back_without_llm():
