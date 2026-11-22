@@ -330,7 +330,17 @@ def job_facts(form: Form, job_listings: Iterable[dict], known_cities: Iterable[s
 # ---------------------------------------------------------------- web news
 
 
+# phrases that use an event word without any event: product names ("Fire OS" on an Amazon
+# tablet), idioms ("under fire", "strikes a deal") and employment ("fired"). Removed before matching.
+NOT_AN_EVENT = re.compile(
+    r"\b(?:fire\s*(?:os|tv|tablets?|stick|hd|phones?|kids|max|edition)|firestick|kindle\s+fire|"
+    r"under\s+fire|fires?\s+back|fired|firing|ceasefire|hire\s+and\s+fire|fire\s+sale|"
+    r"(?:strikes?|struck)\s+(?:a\s+)?(?:deal|partnership|agreement|balance|chord|gold)|"
+    r"(?:price|stock|share)\s+recall|blast\s+from\s+the\s+past)\b", re.I)
+
+
 def adverse_type(text: str) -> Optional[str]:
+    text = NOT_AN_EVENT.sub(" ", text or "")
     for t, words in ADVERSE_TYPES.items():
         if any(contains_phrase(text, w) for w in words):
             return t
