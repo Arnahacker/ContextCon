@@ -1,0 +1,55 @@
+{
+  "_note": "Offline watcher script for the demo companies. Each entry in 'checks' is what one 'Check now' finds, in order; after the last one every check finds no change. Every change names the Crustdata endpoint, field path and exact value it came from. News dates come from the article page, never invented.",
+  "companies": {
+    "700101": {
+      "fixture": "kanpur_hide.json",
+      "checks": [
+        [{"field": "headcount", "before": 310, "after": 335,
+          "endpoint": "POST /company/enrich", "path": "headcount.total", "quote": "headcount.total: 335",
+          "dated": "2026-11-15", "text": "Staff on record went from 310 to 335 (+8%)."}],
+        [{"field": "adverse_event", "before": null, "after": {"type": "fire", "title": "Fire at Kanpur Hide Exports finishing unit, no injuries reported"},
+          "endpoint": "POST /web/search/live", "path": "results[0].title", "quote": "Fire at Kanpur Hide Exports finishing unit, no injuries reported",
+          "url": "https://news.example/kanpur-hide-exports-fire", "dated": "2026-11-20",
+          "text": "News: a fire at the company's finishing unit in Kanpur. The article names Kanpur Hide Exports and Kanpur."}]
+      ]
+    },
+    "700102": {
+      "fixture": "agra_footwear.json",
+      "checks": [
+        [],
+        [{"field": "headcount", "before": 80, "after": 118,
+          "endpoint": "POST /company/enrich", "path": "headcount.total", "quote": "headcount.total: 118",
+          "dated": "2026-11-18", "text": "Staff on record jumped from 80 to 118 (+48%)."},
+         {"field": "sites", "before": ["Agra"], "after": ["Agra", "Firozabad"],
+          "endpoint": "POST /company/enrich", "path": "locations.all_office_addresses", "quote": "locations.all_office_addresses: Firozabad, Uttar Pradesh, India",
+          "dated": "2026-11-18", "text": "A new location appeared on record: Firozabad."}]
+      ]
+    },
+    "700103": {
+      "fixture": "stitchline.json",
+      "checks": [
+        [{"field": "hazardous_activity", "before": null, "after": {"activity": "solvent printing", "job_title": "Screen Printing Operator (Solvent Inks)"},
+          "endpoint": "POST /job/search", "path": "job_details.title", "quote": "job_details.title: Screen Printing Operator (Solvent Inks)",
+          "text": "New job ad: \"Screen Printing Operator (Solvent Inks)\". Solvent inks are flammable."}]
+      ]
+    },
+    "700104": {
+      "fixture": "vellore_tanners.json",
+      "checks": [
+        [{"field": "headcount", "before": 160, "after": 142,
+          "endpoint": "POST /company/enrich", "path": "headcount.total", "quote": "headcount.total: 142",
+          "dated": "2026-11-16", "text": "Staff on record fell from 160 to 142 (-11%)."}]
+      ]
+    },
+    "700105": {"fixture": "balaji_jaipur.json", "checks": []},
+    "700106": {"fixture": "balaji_surat.json", "checks": []},
+    "700107": {
+      "fixture": "moradabad_brass.json",
+      "checks": [
+        [{"field": "hazardous_activity", "before": null, "after": {"activity": "electroplating", "job_title": "Electroplating Technician"},
+          "endpoint": "POST /job/search", "path": "job_details.title", "quote": "job_details.title: Electroplating Technician",
+          "text": "New job ad: \"Electroplating Technician\". Plating uses acids and heated tanks."}]
+      ]
+    }
+  }
+}
