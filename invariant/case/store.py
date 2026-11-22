@@ -63,6 +63,21 @@ def last(case_id: str, kind: str) -> Optional[dict]:
     return None
 
 
+def delete_case(case_id: str) -> bool:
+    """Remove a case and its whole event log. True if it existed."""
+    with _lock, _conn() as c:
+        n = c.execute("DELETE FROM cases WHERE case_id=?", (case_id,)).rowcount
+        c.execute("DELETE FROM events WHERE case_id=?", (case_id,))
+    return n > 0
+
+
+def delete_all_cases() -> int:
+    with _lock, _conn() as c:
+        n = c.execute("DELETE FROM cases").rowcount
+        c.execute("DELETE FROM events")
+    return n
+
+
 def list_cases(limit: int = 50) -> list[dict]:
     with _conn() as c:
         rows = c.execute("SELECT case_id, created, prompt FROM cases ORDER BY created DESC LIMIT ?", (limit,)).fetchall()
