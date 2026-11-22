@@ -2,5 +2,9 @@ data/
 invariant/data/
 *.zip
 .env
+.env.*
+.venv/
 tests/
+.pytest_cache/
+.claude/
 __pycache__/
