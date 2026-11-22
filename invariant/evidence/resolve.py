@@ -22,7 +22,11 @@ from invariant.evidence.facts import norm, norm_company, occupancy_hints
 from invariant.shapes import Form
 
 AMBIGUITY_GAP = 0.05
-MAX_CANDIDATES = 3
+MAX_CANDIDATES = 6  # shown to the broker when ambiguous, most relevant first
+# words that describe the trade, not the brand: "Shoe Bata" is searched again as "Bata"
+GENERIC_WORDS = {"shoe", "shoes", "footwear", "leather", "leathers", "garment", "garments", "textile", "textiles",
+                 "export", "exports", "exporter", "industries", "industry", "company", "co", "group", "india",
+                 "pvt", "private", "ltd", "limited", "llp", "inc", "the", "and", "works", "manufacturing", "store"}
 FOREIGN_MARKERS = ["(u.k.)", "(uk)", " uk limited", "u.k. limited", "united kingdom", "united states", " inc.",
                    " llc", " gmbh", " pty", "s.a.", "new york", "london", "dubai", "singapore"]
 FOREIGN_TLDS = (".uk", ".us", ".au", ".de", ".pt", ".br", ".za", ".es", ".fr", ".it", ".ae", ".sg", ".my",
@@ -98,7 +102,10 @@ def _fits(m: dict, industry: str) -> bool:
     texts = list(bi.get("industries") or []) + [bi.get("description") or "", bi.get("name") or ""]
     if industry in occupancy_hints(texts, bi.get("name")):
         return True
-    return industry != "other" and any(w in " ".join(bi.get("industries") or []).lower() for w in MANUFACTURING_WORDS)
+    # "Retail Apparel and Fashion" is a shop, not a maker: retail labels never count as a manufacturing fit
+    # (live: a 2-10 person "nike" retail page beat nike.com this way)
+    made = [i for i in bi.get("industries") or [] if "retail" not in i.lower()]
+    return industry != "other" and any(w in " ".join(made).lower() for w in MANUFACTURING_WORDS)
 
 
 def _size(m: dict) -> int:
@@ -143,10 +150,48 @@ def plausible(matches: list[dict], form: Form) -> list[dict]:
     return _prefer(ms, lambda m: bool(_bi(m).get("primary_domain")))
 
 
+def brand_name(name: Optional[str]) -> Optional[str]:
+    """'Shoe Bata' -> 'Bata'; None when nothing generic can be dropped."""
+    if not name:
+        return None
+    words = re.findall(r"[A-Za-z0-9&']+", name)
+    core = [w for w in words if w.lower() not in GENERIC_WORDS]
+    return " ".join(core) if core and len(core) < len(words) else None
+
+
+def _indian(m: dict) -> bool:
+    bi = _bi(m)
+    d = (bi.get("primary_domain") or "").lower()
+    text = f"{bi.get('name') or ''} {_location(m) or ''}".lower()
+    return d.endswith((".in", ".co.in")) or "india" in text
+
+
+def ranked_candidates(matches: list[dict], form: Form, survivors: list[dict]) -> list[dict]:
+    """Which candidates to show when ambiguous, most relevant first: the filter survivors,
+    then other real companies whose name carries the brand. Ranked by: Indian (unless the
+    form names other countries), size, has a website, confidence. One per website (largest)."""
+    brand = norm_company(brand_name(form.company_name) or form.company_name or "")
+    indian_wanted = not form.countries or any(norm(c) in ("in", "ind", "india") for c in form.countries)
+    pool: dict[str, dict] = {}
+    for m in list(survivors) + matches:
+        if not m.get("company_data") or _is_shell(m):
+            continue
+        name = norm_company(_bi(m).get("name"))
+        if m not in survivors and brand and brand not in name:
+            continue
+        key = (_bi(m).get("primary_domain") or "").lower() or f"id:{_cid(m)}"
+        if key not in pool or _size(m) > _size(pool[key]):
+            pool[key] = m
+    def score(m):
+        return ((indian_wanted and _indian(m)), _size(m), bool(_bi(m).get("primary_domain")), _conf(m))
+    return sorted(pool.values(), key=score, reverse=True)[:MAX_CANDIDATES]
+
+
 def resolve(form: Form, client: Optional[CrustdataClient] = None) -> tuple[Resolution, list[CallRecord]]:
     client = client or CrustdataClient()
     calls: list[CallRecord] = []
     survivors: list[dict] = []
+    all_matches: list[dict] = []
     tried = False
     for body in identify_body(form):
         tried = True
@@ -162,13 +207,29 @@ def resolve(form: Form, client: Optional[CrustdataClient] = None) -> tuple[Resol
             ms = [m for m in ms if (_bi(m).get("primary_domain") or "").lower() == body["domains"][0]] or ms
             survivors = sorted(ms, key=lambda m: -_conf(m))[:1]
         else:
+            all_matches = ms
             survivors = plausible(ms, form)
         if survivors:
             break
+    # no single answer from the full name: search the brand alone ("Shoe Bata" -> "Bata") too, so
+    # the broker sees the real candidates (e.g. Bata India Limited), never a guess
+    brand = brand_name(form.company_name)
+    if len(survivors) != 1 and brand and not form.domain:
+        try:
+            data, rec = client.post("/company/identify", {"names": [brand]})
+            calls.append(rec)
+            more = _matches(data)
+            all_matches = all_matches + more
+            if not survivors:
+                survivors = plausible(more, form.model_copy(update={"company_name": brand}))
+        except EvidenceUnavailable as e:
+            if e.record:
+                calls.append(e.record)  # the full-name result still stands
     if not tried or not survivors:
         return Resolution(status="not_found"), calls
     if len(survivors) > 1:
-        return Resolution(status="ambiguous", candidates=[_candidate(m) for m in survivors[:MAX_CANDIDATES]]), calls
+        cands = ranked_candidates(all_matches, form, survivors)
+        return Resolution(status="ambiguous", candidates=[_candidate(m) for m in cands]), calls
     top = _candidate(survivors[0])
     return Resolution(status="resolved", company_id=top.company_id, name=top.name, domain=top.domain,
                       candidates=[top]), calls

@@ -285,3 +285,57 @@ def test_enrich_news_adverse_needs_name_in_title():
     f = fs[0]
     assert f.value == {"type": "fire", "title": news[0]["article_title"], "date": "2026-10-01"}
     assert f.source.dated == "2026-10-01" and f.company_match == "company_id" and f.origin == "crustdata"
+
+
+def test_revenue_estimate_becomes_a_sourced_turnover_fact():
+    from invariant.evidence.facts import USD_INR, revenue_fact
+    data = {"revenue": {"estimated": {"lower_bound_usd": 1_000_000, "upper_bound_usd": 5_000_000,
+                                      "timeseries": [{"date": "2026-10-01"}, {"date": "2026-11-01"}]}}}
+    f = revenue_fact(data, "2026-11-22T12:00:00+05:30")
+    assert f.field == "turnover" and f.origin == "crustdata" and f.evidence_kind == "proxy_range"
+    assert f.value == {"low": 1_000_000 * USD_INR, "high": 5_000_000 * USD_INR}
+    assert f.source.dated == "2026-11-01" and "revenue.estimated" in f.source.quote
+    assert revenue_fact({}, "2026-11-22T12:00:00+05:30") is None  # no revenue -> no fact, never a guess
+
+
+def test_retail_page_does_not_beat_the_real_company_on_industry_fit():
+    # live "Nike": ten 1.0 matches; a 2-10 person "Retail Apparel and Fashion" page with no domain
+    # used to win because "apparel" counted as a manufacturing fit. Now: hold and ask.
+    from invariant.evidence.resolve import plausible
+    from invariant.shapes import Form
+
+    def m(cid, name, domain, rng, inds):
+        return {"confidence_score": 1.0, "company_data": {"crustdata_company_id": cid, "basic_info": {
+            "name": name, "primary_domain": domain, "employee_count_range": rng, "industries": inds}}}
+    matches = [m(1, "Nike", "nike.com", "10001+", ["Retail"]),
+               m(2, "nike", None, "2-10", ["Retail Apparel and Fashion", "Retail"]),
+               m(3, "NIKE", "nikemedics.it", "2-10", ["Medical Practices"])]
+    form = Form(company_name="Nike", industry="footwear", countries=["Vietnam"])
+    names = [((s["company_data"]["basic_info"]["primary_domain"]) or "") for s in plausible(matches, form)]
+    assert "nike.com" in names and len(names) >= 2  # ambiguous -> the broker picks, never a guess
+
+
+def test_remote_job_location_is_not_a_site():
+    from invariant.evidence.facts import job_city
+    assert job_city({"location": {"city": "Remote"}}) is None
+    assert job_city({"location": {"raw": "Remote"}}) is None
+    assert job_city({"location": {"city": "Unnao"}}) == "Unnao"
+
+
+def test_news_review_explains_each_article_and_finds_undeclared_plants():
+    from invariant.evidence.facts import review_news
+    items = [
+        {"title": "Kanpur Hide Exports opens new plant in Unnao", "url": "https://n.example/1", "date": "2026-09-01"},
+        {"title": "Fire at Agra shoe market, 12 shops gutted", "url": "https://n.example/2"},
+        {"title": "Kanpur Hide Exports posts record export growth", "url": "https://n.example/3"},
+        {"title": "Kanpur Hide Exports factory in Kanpur expands", "url": "https://n.example/4"},
+    ]
+    facts, seen = review_news(items, "Kanpur Hide Exports Pvt Ltd", ["Kanpur"], None, linked=True,
+                              origin="crustdata", what="POST /company/enrich -> news[].article_title",
+                              fetched="2026-11-22T12:00:00+05:30")
+    assert [(f.value, f.status, f.source.url) for f in facts] == [({"city": "Unnao"}, "undeclared", "https://n.example/1")]
+    verdicts = {n.title: n.verdict for n in seen}
+    assert verdicts["Kanpur Hide Exports opens new plant in Unnao"].startswith("Counted")
+    assert verdicts["Fire at Agra shoe market, 12 shops gutted"].startswith("Ignored")  # does not name the company
+    assert verdicts["Kanpur Hide Exports posts record export growth"].startswith("Read")
+    assert verdicts["Kanpur Hide Exports factory in Kanpur expands"].startswith("Read")  # Kanpur already known

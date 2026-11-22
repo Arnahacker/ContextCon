@@ -21,6 +21,7 @@
           "headcount",
           "locations",
           "taxonomy",
+          "revenue",
           "news"
         ]
       },
@@ -88,6 +89,7 @@
           "headcount",
           "locations",
           "taxonomy",
+          "revenue",
           "news"
         ]
       },
@@ -155,6 +157,7 @@
           "headcount",
           "locations",
           "taxonomy",
+          "revenue",
           "news"
         ]
       },
@@ -222,6 +225,7 @@
           "headcount",
           "locations",
           "taxonomy",
+          "revenue",
           "news"
         ]
       },
@@ -307,6 +311,7 @@
           "headcount",
           "locations",
           "taxonomy",
+          "revenue",
           "news"
         ]
       },
@@ -374,6 +379,7 @@
           "headcount",
           "locations",
           "taxonomy",
+          "revenue",
           "news"
         ]
       },
@@ -441,6 +447,7 @@
           "headcount",
           "locations",
           "taxonomy",
+          "revenue",
           "news"
         ]
       },
@@ -535,6 +542,7 @@
           "headcount",
           "locations",
           "taxonomy",
+          "revenue",
           "news"
         ]
       },

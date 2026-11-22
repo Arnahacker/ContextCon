@@ -10,13 +10,15 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from invariant.contracts import CallRecord, EvidenceResult, Resolution
+from invariant.contracts import CallRecord, EvidenceResult, NewsItem, Resolution
 from invariant.evidence import facts as F
 from invariant.evidence.client import CrustdataClient, EvidenceUnavailable
 from invariant.evidence.resolve import resolve
 from invariant.shapes import Fact, Form
 
-ENRICH_FIELDS = ["basic_info", "headcount", "locations", "taxonomy", "news"]
+# revenue rides in the same enrich call (no extra credits): its estimate feeds the stock
+# estimate when the applicant cannot give monthly sales
+ENRICH_FIELDS = ["basic_info", "headcount", "locations", "taxonomy", "revenue", "news"]
 JOB_FIELDS = ["job_details.title", "job_details.url", "location.raw", "location.city", "metadata.date_added"]
 NEWS_TERMS = "(fire OR explosion OR accident OR pollution OR strike OR closure OR court)"
 
@@ -112,9 +114,16 @@ def gather(form: Form, client: Optional[CrustdataClient] = None, now: Optional[d
     # news, primary: enrich news[] (dated, linked to the company id)
     news = company_data.get("news") or []
     facts += F.news_facts(news, name, fetched)
+    reviewed: list[NewsItem] = []
+    items = [{"title": n.get("article_title") or "", "url": n.get("article_url"),
+              "date": _iso_date(n.get("article_publish_date"))} for n in news]
+    site_facts, reviewed = F.review_news(items, name, _known_cities(form, cities, facts), res.domain, linked=True,
+                                         origin="crustdata", what="POST /company/enrich -> news[].article_title",
+                                         fetched=fetched)
+    facts += site_facts
     # news, secondary: ONE web search, only when enrich had no news
     if not news:
-        facts += _web_news(client, form, res, name, cities, fetched, calls, unavailable)
+        facts += _web_news(client, form, res, name, cities, fetched, calls, unavailable, reviewed, facts)
 
     # sanctions: only with a key, silently skipped otherwise
     if os.environ.get("OPENSANCTIONS_API_KEY"):
@@ -124,10 +133,21 @@ def gather(form: Form, client: Optional[CrustdataClient] = None, now: Optional[d
         except EvidenceUnavailable:
             unavailable.append("sanctions")
 
-    return EvidenceResult(resolution=res, facts=facts, unavailable=unavailable, calls=calls)
+    return EvidenceResult(resolution=res, facts=facts, unavailable=unavailable, calls=calls, news_checked=reviewed)
 
 
-def _web_news(client, form, res, name, cities, fetched, calls, unavailable) -> list[Fact]:
+def _iso_date(d) -> Optional[str]:
+    return d[:10] if isinstance(d, str) and len(d) >= 10 and d[4] == "-" else None
+
+
+def _known_cities(form: Form, cities: list[str], facts: list[Fact]) -> list[str]:
+    """Cities already accounted for: declared, office addresses, and sites found so far."""
+    found = [f.value.get("city") for f in facts if f.field == "sites" and isinstance(f.value, dict)]
+    return [c for c in [form.city, *cities, *found] if c]
+
+
+def _web_news(client, form, res, name, cities, fetched, calls, unavailable,
+              reviewed: Optional[list] = None, facts_so_far: Optional[list] = None) -> list[Fact]:
     city = form.city or (cities[0] if cities else None)
     match_cities = list(dict.fromkeys([c for c in [form.city, *cities] if c]))
     try:
@@ -146,4 +166,12 @@ def _web_news(client, form, res, name, cities, fetched, calls, unavailable) -> l
                     dates[p.get("url")] = F.publish_date(p.get("content"))
         except EvidenceUnavailable:
             pass  # only the date is lost: facts keep dated=None ("date unknown")
-    return F.adverse_facts(results, name, match_cities, res.domain, dates, fetched)
+    out = F.adverse_facts(results, name, match_cities, res.domain, dates, fetched)
+    items = [{"title": r.get("title") or "", "snippet": r.get("snippet") or "", "url": r.get("url"),
+              "date": dates.get(r.get("url"))} for r in results]
+    site_facts, review = F.review_news(items, name, _known_cities(form, cities, (facts_so_far or []) + out),
+                                       res.domain, linked=False, origin="web",
+                                       what="POST /web/search/live -> results[].title", fetched=fetched)
+    if reviewed is not None:
+        reviewed.extend(review)
+    return out + site_facts

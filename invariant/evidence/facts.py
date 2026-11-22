@@ -9,7 +9,7 @@ import re
 from html.parser import HTMLParser
 from typing import Any, Iterable, Optional
 
-from invariant.contracts import Resolution
+from invariant.contracts import NewsItem, Resolution
 from invariant.shapes import Fact, Form, Source
 
 ENRICH_URL = "https://api.crustdata.com/company/enrich"
@@ -88,9 +88,15 @@ def city_of(address: Any) -> Optional[str]:
     return keep[-1] if keep else None
 
 
+NOT_A_PLACE = {"remote", "work from home", "wfh", "anywhere", "hybrid", "multiple locations", "various",
+               "pan india", "india", "united states", "usa", "global"}
+
+
 def job_city(job: dict) -> Optional[str]:
+    """The job's city, or None when the location is not a physical site ("Remote", a country)."""
     loc = job.get("location") or {}
-    return loc.get("city") or city_of(loc.get("raw"))
+    city = loc.get("city") or city_of(loc.get("raw"))
+    return None if not city or norm(city) in NOT_A_PLACE else city
 
 
 def office_cities(company_data: dict) -> list[str]:
@@ -145,9 +151,54 @@ def company_fact(res: Resolution, fetched: str) -> Fact:
                             IDENTIFY_URL, None, fetched, f"crustdata_company_id: {res.company_id}"))
 
 
+USD_INR = 88  # ILLUSTRATIVE conversion rate for the revenue estimate (not a live FX rate)
+
+
+def revenue_fact(company_data: dict, fetched: str) -> Optional[Fact]:
+    """Crustdata's estimated annual revenue band, converted to INR. A coarse band (e.g. $1B-$1T)
+    is still recorded with its source; Decide only estimates from a tight one."""
+    est = (company_data.get("revenue") or {}).get("estimated") or {}
+    lo, hi = est.get("lower_bound_usd"), est.get("upper_bound_usd")
+    if not isinstance(lo, (int, float)) or lo <= 0:
+        return None
+    hi = hi if isinstance(hi, (int, float)) and hi >= lo else lo
+    dates = [p.get("date") for p in est.get("timeseries") or [] if p.get("date")]
+    quote = (f"revenue.estimated: USD {lo:,.0f} - {hi:,.0f} (~Rs {lo * USD_INR / 1e7:,.0f} - "
+             f"{hi * USD_INR / 1e7:,.0f} Cr a year at Rs {USD_INR}/USD, illustrative rate)")
+    return Fact(id="crustdata_turnover", field="turnover",
+                value={"low": int(lo * USD_INR), "high": int(hi * USD_INR)}, origin="crustdata",
+                evidence_kind="proxy_range", status="consistent_unconfirmed", company_match="company_id",
+                source=_src("POST /company/enrich -> revenue.estimated", ENRICH_URL,
+                            max(dates) if dates else company_data.get("updated_at"), fetched, quote))
+
+
+def profile_facts(company_data: dict, fetched: str) -> list[Fact]:
+    """Free extras from the same enrich call: staff trend over a year, founding year."""
+    out: list[Fact] = []
+    hc = company_data.get("headcount") or {}
+    yoy = (hc.get("growth_percent") or {}).get("yoy")
+    as_of = (company_data.get("metadata") or {}).get("growth_calculation_date") or company_data.get("updated_at")
+    if isinstance(yoy, (int, float)):
+        out.append(Fact(id="crustdata_headcount_trend", field="headcount_trend", value=int(round(yoy)),
+                        origin="crustdata", evidence_kind="direct", status="consistent_unconfirmed",
+                        company_match="company_id",
+                        source=_src("POST /company/enrich -> headcount.growth_percent.yoy", ENRICH_URL,
+                                    as_of, fetched, f"headcount.growth_percent.yoy: {yoy}")))
+    year = (company_data.get("basic_info") or {}).get("year_founded")
+    if year:
+        out.append(Fact(id="crustdata_year_founded", field="year_founded", value=str(year)[:4], origin="crustdata",
+                        evidence_kind="direct", status="consistent_unconfirmed", company_match="company_id",
+                        source=_src("POST /company/enrich -> basic_info.year_founded", ENRICH_URL,
+                                    company_data.get("updated_at"), fetched, f"basic_info.year_founded: {year}")))
+    return out
+
+
 def enrich_facts(form: Form, company_data: dict, fetched: str) -> list[Fact]:
     facts: list[Fact] = []
     updated = company_data.get("updated_at")
+    if rev := revenue_fact(company_data, fetched):
+        facts.append(rev)
+    facts += profile_facts(company_data, fetched)
 
     # headcount: one-directional lower bound
     hc = company_data.get("headcount") or {}
@@ -361,6 +412,66 @@ def news_facts(news: Iterable[dict], company_name: str, fetched: str) -> list[Fa
                           source=_src("POST /company/enrich -> news[].article_title", n.get("article_url"),
                                       date, fetched, f"article_title: {title}")))
     return facts
+
+
+SITE_IN_NEWS = re.compile(
+    r"\b(?:plant|factory|unit|facility|warehouse|mill|tannery|manufacturing site)s?\s+(?:in|at|near)\s+"
+    r"([A-Z][A-Za-z]+(?:\s[A-Z][A-Za-z]+)?)")
+MAX_NEWS_SHOWN = 15
+EVENT_WORDS = {"fire": "a fire", "explosion": "an explosion", "accident": "an accident",
+               "pollution": "a pollution problem", "strike": "a strike", "closure": "a closure",
+               "court": "a court case"}
+
+
+def review_news(items: Iterable[dict], company_name: str, known_cities: Iterable[str], domain: Optional[str], *,
+                linked: bool, origin: str, what: str, fetched: str) -> tuple[list[Fact], list[NewsItem]]:
+    """Read every article: (1) say in plain words what we concluded from each (shown on screen),
+    (2) news that names the company AND says it has a plant / factory / unit in a city we did not
+    know about becomes a sourced undeclared-site fact.
+    `linked`: Crustdata already tied the article to the company id (enrich news), so the title
+    naming the company is enough; web results must also name a city or the domain (rule 6)."""
+    core = norm_company(company_name)
+    known = {norm(c) for c in known_cities if c}
+    cities_for_match = [c for c in known_cities if c]
+    facts: list[Fact] = []
+    out: list[NewsItem] = []
+    for it in items:
+        title, snippet = it.get("title") or "", it.get("snippet") or ""
+        text = f"{title} {snippet}"
+        if linked:
+            match = "company_id" if contains_phrase(title, core) else None
+        else:
+            match = names_company(text, company_name, cities_for_match, domain)
+        kind = adverse_type(text)
+        site = None
+        if match:
+            m = SITE_IN_NEWS.search(text)
+            c = m.group(1).strip() if m else None
+            if c and norm(c) not in known and norm(c) not in NOT_A_PLACE and not contains_phrase(c, core):
+                site = c
+                known.add(norm(c))
+                facts.append(Fact(id=f"news_sites_{len(facts) + 1}", field="sites", value={"city": c},
+                                  origin=origin, evidence_kind="lower_bound", status="undeclared",
+                                  company_match=match,
+                                  source=_src(what, it.get("url"), it.get("date"), fetched, f"title: {title}")))
+        event = EVENT_WORDS.get(kind, f"a {kind}") if kind else ""
+        if kind and match:
+            verdict = f"Counted: reports {event} involving this company"
+        elif site:
+            verdict = f"Counted: says the company has a site in {site} that was not declared"
+        elif kind:
+            verdict = f"Ignored: mentions {event}, but does not clearly name this company"
+        elif match:
+            verdict = "Read: about this company, nothing adverse"
+        else:
+            verdict = "Ignored: does not clearly name this company"
+        out.append(NewsItem(title=title or "(no title)", url=it.get("url"), date=it.get("date"),
+                            via=("Crustdata /company/enrich → news" if linked
+                                 else "Crustdata /web/search/live"),
+                            verdict=verdict))
+    # counted items first, then the rest, capped for the screen
+    out.sort(key=lambda n: not n.verdict.startswith("Counted"))
+    return facts, out[:MAX_NEWS_SHOWN]
 
 
 def adverse_candidates(results: Iterable[dict], company_name: str, cities: Iterable[str],
