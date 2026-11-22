@@ -71,3 +71,10 @@ def test_no_llm_means_rule_wording():
     nodes = insights.build(service.view(service.run_case(HERO)))
     words, who = insights.narrate(nodes, "hold")
     assert who == "rules" and set(words) == {n["id"] for n in nodes}
+
+
+def test_summary_lists_each_case_with_its_outcome():
+    cid = service.run_case("Vellore Tanners Ltd, Ranipet, 150 employees, 2 units, need fire cover for 10 crore.")
+    row = next(r for r in service.summary() if r["case_id"] == cid)
+    assert row["outcome"] == "decline" and row["company"] == "Vellore Tanners Ltd"
+    assert row["premium_inr"] is None and row["cover_type"] == "fire"

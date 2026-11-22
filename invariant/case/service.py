@@ -244,6 +244,29 @@ def view(case_id: str) -> dict:
     return out
 
 
+def summary(limit: int = 200) -> list[dict]:
+    """One row per case for the dashboard, straight from each case's event log. Read-only:
+    nothing is re-run, so a case that never finished shows as such."""
+    rows = []
+    for c in store.list_cases(limit):
+        d = store.last(c["case_id"], "decision") or {}
+        ev = store.last(c["case_id"], "evidence") or {}
+        form = store.last(c["case_id"], "form") or {}
+        res = ev.get("resolution") or {}
+        answers = [e for e in store.events(c["case_id"]) if e["kind"] == "answer_confirmed"]
+        cover = next((a["payload"]["fact"]["value"] for a in reversed(answers)
+                      if a["payload"]["fact"]["field"] == "cover_type"), None) or form.get("cover_type")
+        rows.append({
+            "case_id": c["case_id"], "created": c["created"], "prompt": c["prompt"],
+            "company": res.get("name") or form.get("company_name"),
+            "resolution": res.get("status"),
+            "outcome": d.get("outcome"), "hold_reason": d.get("hold_reason"),
+            "premium_inr": d.get("premium_inr"), "cover_type": cover,
+            "answers": len(answers),
+        })
+    return rows
+
+
 def risk_map_words(case_id: str) -> dict:
     """Headline + summary per circle. An LLM may write them (cached); colours never come from it."""
     v = view(case_id)
