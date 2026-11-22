@@ -62,6 +62,30 @@ def create(body: NewCase):
         raise HTTPException(422, f"Could not read this prompt: {exc}") from exc
 
 
+@app.post("/api/cases/start")
+def start(body: NewCase):
+    """Create the case without running it; the screen then calls /step once per stage
+    (read -> evidence -> decide) and shows real progress instead of one long wait."""
+    if not body.prompt.strip():
+        raise HTTPException(400, "empty prompt")
+    case_id = service.store.new_case(body.prompt)
+    return {"case_id": case_id, "next_stage": service.next_stage(case_id), "stages": service.STAGES}
+
+
+@app.post("/api/cases/{case_id}/step")
+def step(case_id: str):
+    try:
+        ran = service.step(case_id)
+    except LookupError as exc:  # no LLM key / fixture and no fallback could read it
+        raise HTTPException(422, f"Could not read this prompt: {exc}") from exc
+    return {"ran": ran, "next_stage": service.next_stage(case_id), "case": service.view(case_id)}
+
+
+@app.get("/api/cases/{case_id}/risk-map")
+def risk_map(case_id: str):
+    return service.risk_map_words(case_id)
+
+
 @app.get("/api/cases")
 def cases():
     return store.list_cases()
