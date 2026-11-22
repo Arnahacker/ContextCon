@@ -24,7 +24,7 @@ import httpx
 from invariant.contracts import CallRecord
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_CACHE = ROOT / "data" / "cache.sqlite"
+DEFAULT_CACHE = Path(os.environ.get("INVARIANT_DATA", ROOT / "data")) / "cache.sqlite"
 FIXTURES = ROOT / "fixtures" / "crustdata"
 
 CRUSTDATA_BASE = "https://api.crustdata.com"

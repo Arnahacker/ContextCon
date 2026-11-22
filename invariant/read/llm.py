@@ -29,7 +29,7 @@ import httpx
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "fixtures" / "llm"
-CACHE_DB = ROOT / "data" / "llm_cache.sqlite"
+CACHE_DB = Path(os.environ.get("INVARIANT_DATA", ROOT / "data")) / "llm_cache.sqlite"
 
 MODEL = os.environ.get("INVARIANT_LLM_MODEL", "claude-opus-5-5")  # Claude model
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
@@ -115,8 +115,11 @@ def call_tool(*, kind: str, index_key: str, prompt_version: str, system: str, to
             con.execute("INSERT OR REPLACE INTO llm_cache VALUES (?, ?, ?)", (key, model, json.dumps(out)))
         if not save_fixture:
             return out
-        FIXTURES.mkdir(parents=True, exist_ok=True)
-        fixture.write_text(json.dumps(out, indent=1, ensure_ascii=False), encoding="utf-8")  # replayable offline
+        try:  # replayable offline; a read-only host (serverless) just skips it
+            FIXTURES.mkdir(parents=True, exist_ok=True)
+            fixture.write_text(json.dumps(out, indent=1, ensure_ascii=False), encoding="utf-8")
+        except OSError:
+            pass
         return out
     raise LLMUnavailable(f"every LLM provider failed for {kind}: {'; '.join(errors)}")
 
