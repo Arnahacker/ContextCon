@@ -1,0 +1,6 @@
+data/
+invariant/data/
+*.zip
+.env
+tests/
+__pycache__/

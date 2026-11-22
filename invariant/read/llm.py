@@ -115,8 +115,11 @@ def call_tool(*, kind: str, index_key: str, prompt_version: str, system: str, to
             con.execute("INSERT OR REPLACE INTO llm_cache VALUES (?, ?, ?)", (key, model, json.dumps(out)))
         if not save_fixture:
             return out
-        FIXTURES.mkdir(parents=True, exist_ok=True)
-        fixture.write_text(json.dumps(out, indent=1, ensure_ascii=False), encoding="utf-8")  # replayable offline
+        try:  # replayable offline; a read-only host (serverless) just skips it
+            FIXTURES.mkdir(parents=True, exist_ok=True)
+            fixture.write_text(json.dumps(out, indent=1, ensure_ascii=False), encoding="utf-8")
+        except OSError:
+            pass
         return out
     raise LLMUnavailable(f"every LLM provider failed for {kind}: {'; '.join(errors)}")
 
