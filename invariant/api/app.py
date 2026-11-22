@@ -86,6 +86,12 @@ def risk_map(case_id: str):
     return service.risk_map_words(case_id)
 
 
+@app.get("/api/dashboard")
+def dashboard():
+    """Every case with its outcome and premium, for the command center (read-only)."""
+    return service.summary()
+
+
 @app.get("/api/cases")
 def cases():
     return store.list_cases()
