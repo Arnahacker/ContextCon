@@ -151,7 +151,7 @@ def short_inr(n: float) -> str:
 # ------------------------------------------------------------------ vocabularies
 
 OCCUPANCIES = ["leather", "footwear", "garments", "textiles", "food_processing", "engineering",
-               "chemicals", "brassware", "other"]
+               "chemicals", "brassware", "retail", "warehousing", "office", "other"]
 # order matters: first hit wins ("leather shoes" is footwear)
 _INDUSTRY_KEYWORDS = [
     ("footwear", ["footwear", "shoe", "sandal", "chappal", "slipper", "boot"]),
@@ -159,11 +159,23 @@ _INDUSTRY_KEYWORDS = [
     ("garments", ["garment", "apparel", "stitching", "clothing", "readymade", "hosiery", "kapde"]),
     ("textiles", ["textile", "spinning", "weaving", "yarn", "fabric", "handloom", "dyeing", "mill"]),
     ("food_processing", ["food", "rice", "flour", "spice", "dairy", "snack", "bakery", "agro"]),
-    ("brassware", ["brass", "handicraft", "metalware"]),
+    ("brassware", ["brass", "brassware", "handicraft", "metalware"]),
     ("chemicals", ["chemical", "pharma", "paint", "fertiliser", "fertilizer", "solvent"]),
     ("engineering", ["engineering", "machining", "fabrication", "forging", "casting", "auto part",
                      "machinery", "tools"]),
+    # non-manufacturing classes come last: a leather maker that "exports" is still leather
+    ("warehousing", ["warehouse", "warehousing", "logistics", "godown", "cold storage", "courier",
+                     "freight", "supply chain", "fulfilment", "fulfillment"]),
+    ("retail", ["retail", "e-commerce", "ecommerce", "online marketplace", "marketplace", "supermarket",
+                "hypermarket", "showroom", "online shopping"]),
+    ("office", ["software", "it services", "information technology", "internet", "saas", "bpo",
+                "consulting", "fintech", "call centre", "call center"]),
 ]
+
+
+def kw_hit(word: str, text: str) -> bool:
+    """Whole-word match, plural allowed: 'mill' finds 'mills' but not 'million'."""
+    return re.search(r"\b" + re.escape(word) + r"(?:s|es)?\b", text) is not None
 
 
 _VOCAB = sorted({w for _, ws in _INDUSTRY_KEYWORDS for w in ws if " " not in w and len(w) >= 5}
@@ -193,7 +205,7 @@ def normalize_industry(text: Optional[str]) -> Optional[str]:
     if t.strip() in OCCUPANCIES:
         return t.strip()
     for occ, words in _INDUSTRY_KEYWORDS:
-        if any(w in t for w in words):
+        if any(kw_hit(w, t) for w in words):
             return occ
     return "other"
 
@@ -203,27 +215,55 @@ def _industry_from_name(name: Optional[str]) -> Optional[str]:
     return None if occ in (None, "other") else occ
 
 
-def normalize_cover_type(text: Optional[str]) -> Optional[str]:
+# every line of cover a reply can ask for. Indian property cover IS the fire policy (Bharat
+# Sookshma / Laghu Udyam Suraksha). "workers" alone is a headcount, not a cover: workmen's comp
+# needs a cover phrase.
+_COVER_PATTERNS = [
+    ("fire", r"\bfire\b|\baag\b|\bproperty\b|sookshma|laghu udyam|material damage|building and stock|"
+             r"factory insurance|\bstfi\b|\bfloods?\b|\bstorms?\b|\binundation\b"),
+    ("wc", r"\bwc\b|workm[ae]n'?s?\b|workers'?\s*comp|employee'?s?'?\s*comp|\bec policy\b|"
+           r"employees'? compensation"),
+    ("marine", r"\bmarine\b|\bcargo\b|\btransit\b|\bshipments?\b"),
+    ("liability", r"liabilit"),
+]
+# "no fire", "don't need fire", "except liability", "fire nahi chahiye"
+_NEGATE_BEFORE = re.compile(r"\b(?:no|not|without|except|excluding|exclude|don'?t|dont|do not|never|"
+                            r"neither|nor|skip)\b[^.;,]*$")
+_NEGATE_AFTER = re.compile(r"^\s*(?:is\s+)?(?:not needed|not required|nahi|nahin|na)\b")
+
+
+def covers_mentioned(text: Optional[str]) -> list[str]:
+    """Every cover the text asks for, in our order, ignoring the ones it rules out."""
     if not text:
-        return None
+        return []
     t = str(text).lower()
-    # Indian property cover IS the fire policy (Bharat Sookshma / Laghu Udyam Suraksha)
-    fire = "fire" in t or "aag" in t or bool(re.search(
-        r"\bproperty\b|sookshma|laghu udyam|material damage|building and stock|factory insurance", t))
-    wc = bool(re.search(r"\bwc\b|workm[ae]n|worker|employee.?s?.? comp|compensation", t))
-    both = bool(re.search(r"\bboth\b|fire.?wc|fire_wc", t))
-    if both or (fire and wc):
+    if re.search(r"\bboth\b|fire.?wc|fire_wc", t):
+        t += " fire wc"
+    out = []
+    for cover, pat in _COVER_PATTERNS:
+        for m in re.finditer(pat, t):
+            before = t[max(0, m.start() - 40):m.start()]
+            before = re.split(r"[.;,]|\bbut\b|\band\b|\bhowever\b", before)[-1]
+            if _NEGATE_BEFORE.search(before) or _NEGATE_AFTER.search(t[m.end():m.end() + 20]):
+                continue
+            out.append(cover)
+            break
+    return out
+
+
+def normalize_cover_type(text: Optional[str]) -> Optional[str]:
+    """The one line we can price for this case. Fire + workmen's comp price together; any other
+    mix is priced on its main line and the rest are named back to the broker (see answer.py)."""
+    lines = covers_mentioned(text)
+    if "fire" in lines and "wc" in lines:
         return "fire_wc"
-    if wc:
-        return "wc"
-    if fire:
-        return "fire"
-    # recognised but not on the rate card: verified, then referred to a specialist
-    if re.search(r"\bmarine\b|\bcargo\b|\btransit\b|shipment", t):
-        return "marine"
-    if re.search(r"liabilit", t):
-        return "liability"
-    return None
+    return lines[0] if lines else None
+
+
+def other_covers(text: Optional[str], chosen: Optional[str]) -> list[str]:
+    """Covers the text asked for that the chosen line does not include."""
+    inside = {"fire_wc": {"fire", "wc"}}.get(chosen or "", {chosen})
+    return [c for c in covers_mentioned(text) if c not in inside]
 
 
 # ------------------------------------------------------------------ names and places

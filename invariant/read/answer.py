@@ -13,7 +13,7 @@ from invariant.read.declared import canonical_quote
 from invariant.read.llm import LLMUnavailable, call_tool, log, nullable
 from invariant.read.normalize import (
     _GLUE, _HUNDRED, _SCALES, _UNITS, _parse_single, _tokens, indian_format, looks_like_injection, normalize_cover_type, normalize_industry,
-    parse_range, short_inr,
+    other_covers, parse_range, short_inr,
 )
 from invariant.shapes import Fact, Source
 
@@ -156,6 +156,22 @@ def _option_reading(field: str, option: str) -> FieldReading:
     return FieldReading(field=field, kind="value", value=option, display=f"I read that as: {option}")
 
 
+_COVER_NAMES = {"fire": "fire", "wc": "workmen's compensation", "fire_wc": "fire + workmen's compensation",
+                "marine": "marine cargo", "liability": "liability"}
+
+
+def _cover_reading(field: str, reply: str, ct: str) -> FieldReading:
+    """Say back the line we will price, and name every other cover the broker asked for
+    instead of silently dropping it."""
+    rest = other_covers(reply, ct)
+    msg = f"I read that as {_COVER_NAMES.get(ct, ct)}"
+    if rest:
+        msg += (f". You also asked for {' and '.join(_COVER_NAMES.get(c, c) for c in rest)}: this desk "
+                f"prices one line per case (fire + workmen's comp together), so start a separate case for "
+                f"{'that' if len(rest) == 1 else 'those'}")
+    return FieldReading(field=field, kind="value", value=ct, display=msg)
+
+
 def _value_reading(field: str, value: str) -> FieldReading:
     if field in NUMERIC_FIELDS:
         got = _number_reading(field, value)
@@ -164,8 +180,7 @@ def _value_reading(field: str, value: str) -> FieldReading:
         return _refused(field)
     if field == "cover_type":
         ct = normalize_cover_type(value)
-        return FieldReading(field=field, kind="value", value=ct, display=f"I read that as {ct}") if ct \
-            else _refused(field)
+        return _cover_reading(field, value, ct) if ct else _refused(field)
     if field == "occupancy":
         occ = normalize_industry(value)
         return FieldReading(field=field, kind="value", value=occ, display=f"I read that as {occ}")
@@ -209,7 +224,7 @@ def read_answer(field: str, question: str, reply: str, options: Optional[list[st
     if field == "cover_type":
         ct = normalize_cover_type(reply)
         if ct and (not options or ct in options):
-            return FieldReading(field=field, kind="value", value=ct, display=f"I read that as {ct}")
+            return _cover_reading(field, reply, ct)
     if options:
         hit = _match_option(reply, options)
         if hit is not None:

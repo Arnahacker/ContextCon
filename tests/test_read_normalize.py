@@ -41,7 +41,7 @@ def test_indian_format(n, want):
 @pytest.mark.parametrize("text,want", [
     ("leather exporter", "leather"), ("tannery", "leather"), ("shoes", "footwear"),
     ("leather shoes", "footwear"), ("garment stitching", "garments"), ("apparel", "garments"),
-    ("brass handicrafts", "brassware"), ("textiles", "textiles"), ("software", "other"), (None, None),
+    ("brass handicrafts", "brassware"), ("textiles", "textiles"), ("software", "office"), ("e-commerce marketplace", "retail"), ("million rupee mill", "textiles"), ("3 million", "other"), (None, None),
 ])
 def test_industry(text, want):
     assert normalize_industry(text) == want
@@ -90,3 +90,32 @@ def test_property_cover_is_the_fire_policy():
     assert normalize_cover_type("marine insurance") == "marine"
     assert normalize_cover_type("public liability cover") == "liability"
     assert normalize_cover_type("insurance") is None
+
+
+# ------------------------------------------------------------------ cover: whole answers, not one word
+import pytest as _pt
+from invariant.read.normalize import covers_mentioned, normalize_cover_type, other_covers
+from invariant.read.answer import read_answer
+
+
+@_pt.mark.parametrize("text,lines,priced", [
+    ("Fire cover for the warehouses, public liability for customers, and marine for imported stock",
+     ["fire", "marine", "liability"], "fire"),
+    ("We don't need fire, only liability for our customers", ["liability"], "liability"),
+    ("no fire cover, just workmen's compensation for our 200 workers", ["wc"], "wc"),
+    ("fire cover please, we have 200 workers", ["fire"], "fire"),          # workers = headcount, not WC
+    ("fire and workmen's comp", ["fire", "wc"], "fire_wc"),
+    ("both", ["fire", "wc"], "fire_wc"),
+    ("marine cargo for exports, fire nahi chahiye", ["marine"], "marine"),
+    ("cover for floods and storms at the factory", ["fire"], "fire"),
+])
+def test_cover_reads_the_whole_answer(text, lines, priced):
+    assert covers_mentioned(text) == lines
+    assert normalize_cover_type(text) == priced
+
+
+def test_cover_answer_names_the_covers_it_cannot_price_here():
+    r = read_answer("cover_type", "Which cover?", "Fire for the godowns, plus liability and marine cargo",
+                    ["fire", "wc", "fire_wc", "marine", "liability"])
+    assert r.value == "fire" and "marine cargo" in r.display and "liability" in r.display
+    assert other_covers("fire and wc and marine", "fire_wc") == ["marine"]
