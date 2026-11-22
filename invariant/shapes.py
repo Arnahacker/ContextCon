@@ -18,7 +18,7 @@ EvidenceKind = Literal["direct", "lower_bound", "proxy_range", "claim"]
 Status = Literal["matches", "contradicts", "consistent_unconfirmed", "cannot_verify", "undeclared"]
 CompanyMatch = Literal["company_id", "domain", "name_city", "not_applicable"]
 Outcome = Literal["quote", "refer", "decline", "hold"]
-HoldReason = Literal["ambiguous_company", "company_not_found", "evidence_unavailable"]
+HoldReason = Literal["ambiguous_company", "company_not_found", "evidence_unavailable", "awaiting_answers"]
 
 
 class _Frozen(BaseModel):
