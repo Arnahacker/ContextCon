@@ -13,6 +13,11 @@ FETCHED = "2026-11-22T12:00:00+05:30"
 RESOLVED = Resolution(status="resolved", company_id="cd_1", name="X", domain="x.example")
 
 
+def other_qs(d):
+    """Questions except claims history, which is always asked (no public record exists)."""
+    return [q for q in d.questions if q.field != "claims_history"]
+
+
 def declared(field, value):
     return Fact(id=f"declared_{field}", field=field, value=value, origin="declared", evidence_kind="claim",
                 status="consistent_unconfirmed",
@@ -106,7 +111,7 @@ def test_clean_quotes_with_no_rules():
     assert d.outcome == "quote" and d.steps == [] and d.would_flip_if == []
     # 3 Cr x (0.90 + 0.15) per mille = 31,500 + 18% GST
     assert d.premium_inr == 37_170
-    assert d.questions == []
+    assert other_qs(d) == []
 
 
 def test_hidden_hazard_refers():
@@ -249,8 +254,8 @@ COMPONENTS = ["building_owned", "building_area_sqft", "roof_type", "monthly_sale
 def test_sum_insured_unknown_drops_to_component_questions():
     d = run(no_si_facts() + [followup("sum_insured", None)])
     assert d.outcome == "hold" and d.gate.missing == ["sum_insured"]
-    assert sorted(q.field for q in d.questions) == sorted(COMPONENTS)
-    assert all(q.rung == 2 for q in d.questions)
+    assert sorted(q.field for q in other_qs(d)) == sorted(COMPONENTS)
+    assert all(q.rung == 2 for q in other_qs(d))
     roof = next(q for q in d.questions if q.field == "roof_type")
     assert roof.options == ["concrete", "tin_sheet", "other"]
 
@@ -264,11 +269,11 @@ def test_components_answered_give_derived_sum_insured():
     # are still offered because they narrow the range, and the total is not re-asked
     assert partial.outcome == "quote" and not partial.gate.blocked
     # machinery (2.55-5.1 Cr norm range) is worth asking; stock weeks moves the premium < Rs 5,000
-    assert [q.field for q in partial.questions] == ["machinery_value"]
-    assert partial.questions[0].worth_inr >= 5000 and partial.questions[0].rung == 2
+    assert [q.field for q in other_qs(partial)] == ["machinery_value"]
+    assert other_qs(partial)[0].worth_inr >= 5000 and partial.questions[0].rung == 2
     answers += [followup("stock_weeks", None), followup("machinery_value", None)]
     d = run(no_si_facts() + answers)
-    assert d.questions == []
+    assert other_qs(d) == []
     assert d.outcome == "quote"
     assert [s.rule for s in d.steps] == ["DERIVED_VALUE"]
     assert d.steps[0].because == ["derived_sum_insured"] and d.steps[0].multiplier == 1.05
@@ -292,8 +297,8 @@ def test_rented_building_is_zero_and_everything_skipped_reaches_band():
                followup("monthly_sales", None), followup("stock_weeks", None), followup("machinery_value", None)]
     d = run(no_si_facts() + answers)
     assert d.outcome == "hold"
-    assert [(q.field, q.rung) for q in d.questions] == [("sum_insured", 3)]
-    assert d.questions[0].options == ["<1 Cr", "1-5 Cr", "5-25 Cr", "25+ Cr"]
+    assert [(q.field, q.rung) for q in other_qs(d)] == [("sum_insured", 3)]
+    assert other_qs(d)[0].options == ["<1 Cr", "1-5 Cr", "5-25 Cr", "25+ Cr"]
     band = followup("sum_insured", {"low": 10_000_000, "high": 50_000_000}, id="followup_sum_insured_2")
     d2 = run(no_si_facts() + answers + [band])
     assert d2.outcome == "quote" and "DERIVED_VALUE" in rules_of(d2)
@@ -304,9 +309,9 @@ def test_wages_ladder_and_unknown_loading():
     d = run(facts)
     assert d.questions and d.questions[0].field == "wages" and d.questions[0].worth_inr >= 5000
     d2 = run(facts + [followup("wages", None)])
-    assert [q.field for q in d2.questions] == ["pf_monthly"]
+    assert [q.field for q in other_qs(d2)] == ["pf_monthly"]
     d3 = run(facts + [followup("wages", None), followup("pf_monthly", 120_000)])
-    assert rules_of(d3) == [] and d3.questions == []
+    assert rules_of(d3) == [] and other_qs(d3) == []
     # 1,20,000 PF / 0.12 x 12 = 1.2 Cr wages x 3.0 per 100 + fire 31,500, + 18% GST
     assert d3.premium_inr == round((12_000_000 * 0.03 + 31_500) * 1.18)
     d4 = run(facts + [followup("wages", None), followup("pf_monthly", None)])
@@ -320,9 +325,15 @@ def test_questions_stop_after_five():
 
 def test_cheap_questions_are_dropped_but_blocking_ones_kept():
     d = run(hero_facts())
-    assert all(q.worth_inr >= 5000 or q.field in ("cover_type", "sum_insured") for q in d.questions)
+    assert all(q.worth_inr >= 5000 or q.field in ("cover_type", "sum_insured", "claims_history") for q in d.questions)
 
 
 def test_decide_is_deterministic():
     facts = hero_facts() + HERO_ANSWERS
     assert run(facts).model_dump() == run(facts).model_dump()
+
+
+def test_claims_history_always_asked_but_loaded_only_when_unknown():
+    d = run(clean_facts())
+    q = [q for q in d.questions if q.field == "claims_history"]
+    assert q and q[0].worth_inr > 0 and d.outcome == "quote" and rules_of(d) == []

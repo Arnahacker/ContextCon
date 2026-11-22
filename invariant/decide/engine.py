@@ -127,14 +127,17 @@ def questions(raw: list[Fact], a: Assessment) -> list[Question]:
     rule_names = {s.rule for s in a.steps}
     out: list[tuple[tuple, Question]] = []
     for order, field in enumerate(ladders.LADDERS):
-        if field == "claims_history" and "CLAIMS_HISTORY_UNKNOWN" not in rule_names:
-            continue
+        # claims history is always asked (no public record exists for private firms);
+        # the loading applies only once the broker says they don't know.
         if field == "wages" and a.cover not in ("wc", "fire_wc"):
             continue
         st = ladders.state(a.facts, field)
         blocking = field in a.missing
         for spec in st.pending:
             w = worth(raw, a, spec.field)
+            if spec.field == "claims_history" and "CLAIMS_HISTORY_UNKNOWN" not in rule_names and a.premium:
+                # not yet loaded: the question is worth the loading a "don't know" would add
+                w = int(a.premium[1] * (rules.LOADINGS["CLAIMS_HISTORY_UNKNOWN"] - 1))
             if not blocking and w < MIN_QUESTION_WORTH and field not in ALWAYS_OFFER:
                 continue
             q = Question(field=spec.field, ask=spec.ask, worth_inr=w, record_we_need=spec.record_we_need,
