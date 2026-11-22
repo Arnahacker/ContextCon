@@ -1,4 +1,5 @@
 # INVARIANT
+The vercel link: https://invariant-desk.vercel.app
 
 **An underwriting desk that gives the same answer however the request is worded, with a source behind every reason.**
 
